@@ -39,6 +39,12 @@ class BreedingSowsService {
     include: { status: true }, // optional, if you want to include status details
   });
   }
+
+  async countFarrowingsBySow(sowId: number) {
+    return await prisma.farrowings.count({
+      where: { sow_id: sowId },
+    });
+  }
 }
 
 export default new BreedingSowsService();

@@ -1,6 +1,7 @@
 import express from "express";
-import statusRoutes from "./routes/status.routes";
-import breedingSowRoutes from "./routes/breedingSows.routes";
+import statusRoutes from "./routes/status.route";
+import breedingSowRoutes from "./routes/breedingSows.route";
+import farrowingsRoutes from "./routes/farrowings.route";
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.get("/", (_, res) => {
 // Rutas
 app.use("/api/status", statusRoutes);
 app.use("/api/breeding-sows", breedingSowRoutes);
+app.use("/api/farrowings", farrowingsRoutes);
 
 const PORT = process.env.PORT || 3000;
 

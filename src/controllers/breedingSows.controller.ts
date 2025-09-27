@@ -35,10 +35,17 @@ class BreedingSowsController {
     await BreedingSowsService.delete(id);
     res.status(204).send();
   }
+
   async getAllByStatusId(req: Request, res: Response) {
     const statusId = Number(req.params.statusId);
     const sows = await BreedingSowsService.getAllByStatusId(statusId);
     res.json(sows);
+  }
+
+  async countFarrowingsBySow(req: Request, res: Response) {
+    const sowId = Number(req.params.sowId);
+    const count = await BreedingSowsService.countFarrowingsBySow(sowId);
+    res.json({ sowId, farrowingCount: count });
   }
 }
 
