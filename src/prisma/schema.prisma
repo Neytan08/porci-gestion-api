@@ -9,23 +9,34 @@ datasource db {
 }
 
 model breedingsows {
-  sow_id            Int       @id @default(autoincrement())
+  sow_id            Int          @id @default(autoincrement())
   status_id         Int
-  sow_tag_number    String    @unique @db.VarChar(50)
-  entry_date        DateTime  @db.Date
-  weight            Decimal?  @db.Decimal(5, 2)
-  length            Decimal?  @db.Decimal(5, 2)
+  sow_tag_number    String       @unique @db.VarChar(50)
+  entry_date        DateTime     @db.Date
+  weight            Decimal?     @db.Decimal(5, 2)
+  length            Decimal?     @db.Decimal(5, 2)
   mammary_glands    Int?
-  breed             String?   @db.VarChar(50)
-  farrowing_number  Int?      @default(0)
-  last_weaning_date DateTime? @db.Date
-  removal_date      DateTime? @db.Date
+  breed             String?      @db.VarChar(50)
+  farrowing_number  Int?         @default(0)
+  last_weaning_date DateTime?    @db.Date
+  removal_date      DateTime?    @db.Date
   removal_reason    String?
-  status            status    @relation(fields: [status_id], references: [status_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_status")
+  status            status       @relation(fields: [status_id], references: [status_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_status")
+  farrowings        farrowings[]
 }
 
 model status {
   status_id    Int            @id @default(autoincrement())
   status_name  String         @unique @db.VarChar(100)
   breedingsows breedingsows[]
+}
+
+model farrowings {
+  farrowing_id   Int          @id @default(autoincrement())
+  sow_id         Int
+  farrowing_date DateTime     @db.Date
+  live_births    Int?         @default(0)
+  still_births   Int?         @default(0)
+  notes          String?
+  breedingsows   breedingsows @relation(fields: [sow_id], references: [sow_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_sow")
 }
