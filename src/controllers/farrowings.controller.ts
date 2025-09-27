@@ -12,9 +12,8 @@ class FarrowingsController {
         const farrowing = await FarrowingsService.getById(id);
         if (!farrowing) {
             return res.status(404).json({ message: "Farrowing not found" });
-        } else {
-            return res.json(farrowing);
         }
+        return res.json(farrowing);
     }
 
     async create(req: Request, res: Response) {

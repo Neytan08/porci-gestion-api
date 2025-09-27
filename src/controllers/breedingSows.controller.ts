@@ -12,9 +12,8 @@ class BreedingSowsController {
     const sow = await BreedingSowsService.getById(id);
     if (!sow) {
       return res.status(404).json({ message: "Sow not found" });
-    } else {
-      return res.json(sow);
     }
+    return res.json(sow);
   }
 
   async create(req: Request, res: Response) {
