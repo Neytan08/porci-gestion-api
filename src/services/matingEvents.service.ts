@@ -30,6 +30,18 @@ class MatingEventsService {
             where: { mating_id: id },
         });
     }
+
+    async getAllMatingEventsBySow(sowId: number) {
+        return await prisma.matingevents.findMany({
+            where: { sow_id: sowId },
+        }); 
+    }
+
+    async getAllMatingEventsByBoar(boarId: number) {
+        return await prisma.matingevents.findMany({
+            where: { boar_id: boarId },
+        }); 
+    }
 }
 
 export default new MatingEventsService();

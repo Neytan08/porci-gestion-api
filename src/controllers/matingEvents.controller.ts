@@ -35,6 +35,18 @@ class MatingEventsController {
         await MatingEventsService.delete(id);
         res.status(204).send();
     }
+
+    async getAllMatingEventsBySow(req: Request, res: Response) {
+        const sowId = Number(req.params.sowId);
+        const events = await MatingEventsService.getAllMatingEventsBySow(sowId);
+        res.json(events);
+    }
+
+    async getAllMatingEventsByBoar(req: Request, res: Response) {
+        const boarId = Number(req.params.boarId);
+        const events = await MatingEventsService.getAllMatingEventsByBoar(boarId);
+        res.json(events);
+    }
 }
 
 export default new MatingEventsController();
