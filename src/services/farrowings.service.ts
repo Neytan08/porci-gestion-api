@@ -36,7 +36,7 @@ class FarrowingsService {
     async getAllFarrowingsBySow(sowId: number) {
         return await prisma.farrowings.findMany({
             where: { sow_id: sowId },
-            include: { breedingsows: true }, // optional, if you want to include breeding sow details
+            // include: { breedingsows: true }, // optional, if you want to include breeding sow details
         }); 
     }
 }

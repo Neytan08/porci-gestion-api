@@ -9,20 +9,23 @@ datasource db {
 }
 
 model breedingsows {
-  sow_id            Int          @id @default(autoincrement())
+  sow_id            Int             @id @default(autoincrement())
   status_id         Int
-  sow_tag_number    String       @unique @db.VarChar(50)
-  entry_date        DateTime     @db.Date
-  weight            Decimal?     @db.Decimal(5, 2)
-  length            Decimal?     @db.Decimal(5, 2)
+  sow_tag_number    String          @unique @db.VarChar(50)
+  entry_date        DateTime        @db.Date
+  weight            Decimal?        @db.Decimal(5, 2)
+  length            Decimal?        @db.Decimal(5, 2)
   mammary_glands    Int?
-  breed             String?      @db.VarChar(50)
-  farrowing_number  Int?         @default(0)
-  last_weaning_date DateTime?    @db.Date
-  removal_date      DateTime?    @db.Date
+  breed             String?         @db.VarChar(50)
+  farrowing_number  Int?            @default(0)
+  last_weaning_date DateTime?       @db.Date
+  removal_date      DateTime?       @db.Date
   removal_reason    String?
-  status            status       @relation(fields: [status_id], references: [status_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_status")
+  status            status          @relation(fields: [status_id], references: [status_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_status")
   farrowings        farrowings[]
+  matingevents      matingevents[]
+  notifications     notifications[]
+  vaccines          vaccines[]
 }
 
 model status {
@@ -47,12 +50,57 @@ model farrowings {
 }
 
 model boars {
-  boar_id         Int       @id @default(autoincrement())
-  boar_tag_number String    @unique @db.VarChar(50)
-  weight          Decimal?  @db.Decimal(5, 2)
-  length          Decimal?  @db.Decimal(5, 2)
-  breed           String?   @db.VarChar(50)
-  entry_date      DateTime? @db.Date
-  removal_date    DateTime? @db.Date
+  boar_id         Int            @id @default(autoincrement())
+  boar_tag_number String         @unique @db.VarChar(50)
+  weight          Decimal?       @db.Decimal(5, 2)
+  length          Decimal?       @db.Decimal(5, 2)
+  breed           String?        @db.VarChar(50)
+  entry_date      DateTime?      @db.Date
+  removal_date    DateTime?      @db.Date
   removal_reason  String?
+  matingevents    matingevents[]
+  vaccines        vaccines[]
+}
+
+model matingevents {
+  mating_id         Int          @id @default(autoincrement())
+  sow_id            Int
+  boar_id           Int?
+  insemination_date DateTime     @db.Date
+  insemination_type String?      @db.VarChar(50)
+  notes             String?
+  boars             boars?       @relation(fields: [boar_id], references: [boar_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_boar")
+  breedingsows      breedingsows @relation(fields: [sow_id], references: [sow_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_sow")
+}
+
+model notifications {
+  notification_id Int          @id @default(autoincrement())
+  sow_id          Int
+  event_type      String       @db.VarChar(100)
+  scheduled_date  DateTime     @db.Date
+  status          String?      @db.VarChar(50)
+  note            String?
+  breedingsows    breedingsows @relation(fields: [sow_id], references: [sow_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_sow_notification")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model vaccines {
+  vaccination_id       Int           @id @default(autoincrement())
+  sow_id               Int?
+  boar_id              Int?
+  vaccine_id           Int
+  administration_date  DateTime      @db.Date
+  dose                 String?       @db.VarChar(50)
+  administration_route String?       @db.VarChar(50)
+  administered_by      String?       @db.VarChar(100)
+  note                 String?
+  boars                boars?        @relation(fields: [boar_id], references: [boar_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_boar")
+  breedingsows         breedingsows? @relation(fields: [sow_id], references: [sow_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_sow")
+  vaccinetypes         vaccinetypes  @relation(fields: [vaccine_id], references: [vaccine_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_vaccine")
+}
+
+model vaccinetypes {
+  vaccine_id   Int        @id @default(autoincrement())
+  vaccine_name String     @db.VarChar(100)
+  vaccines     vaccines[]
 }
