@@ -83,7 +83,6 @@ model notifications {
   breedingsows    breedingsows @relation(fields: [sow_id], references: [sow_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_sow_notification")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model vaccines {
   vaccination_id       Int           @id @default(autoincrement())
   sow_id               Int?
