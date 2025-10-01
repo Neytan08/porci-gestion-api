@@ -36,7 +36,7 @@
     // Recommended Options
     "strict": true,
     "skipLibCheck": true,
-    "noUnusedParameters": true,
+    // "noUnusedParameters": true,
     "noUnusedLocals": true,
     "noImplicitReturns": true
   },
