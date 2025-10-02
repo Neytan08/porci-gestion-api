@@ -1,10 +1,24 @@
 import { Request, Response } from "express";
 import FarrowingsService from "../services/farrowings.service";
 import logger from '../utils/logger';
+import ApiError from '../utils/apiError';
+import { z } from "zod";
+
+// Farrowing Schema validation using Zod
+const farrowingsSchema = z.object({
+    sow_id: z.number().int().positive(),
+    farrowing_date: z.string().refine(date => !isNaN(Date.parse(date)), { message: "Invalid farrowing_date format" }),
+    male_piglets: z.number().int().nonnegative(),
+    female_piglets: z.number().int().nonnegative(),
+    still_births: z.number().int().nonnegative(),
+    mummies: z.number().int().nonnegative(),
+    weaning_date: z.string().refine(date => !isNaN(Date.parse(date)), { message: "Invalid weaning_date format" }),
+    weaned_piglets: z.number().int().nonnegative(),
+    notes: z.string().optional()
+});
 
 class FarrowingsController {
     async getAll(_: Request, res: Response) {
-        logger.info("Fetching all farrowings");
         const farrowings = await FarrowingsService.getAll();
         logger.info(`Found ${farrowings.length} farrowings`);
         res.json(farrowings);
@@ -12,45 +26,56 @@ class FarrowingsController {
 
     async getById(req: Request, res: Response) {
         const id = Number(req.params.id);
-        logger.info(`Fetching farrowing with id: ${id}`);
         const farrowing = await FarrowingsService.getById(id);
         if (!farrowing) {
             logger.warn(`Farrowing with id ${id} not found`);
-            return res.status(404).json({ message: "Farrowing not found" });
+            throw ApiError.notFound("Farrowing not found");
         }
         logger.info(`Farrowing found: ${JSON.stringify(farrowing)}`);
         return res.json(farrowing);
     }
 
     async create(req: Request, res: Response) {
-        const data = req.body;
-        logger.info(`Creating farrowing with data: ${JSON.stringify(data)}`);
-        const newFarrowing = await FarrowingsService.create(data);
+        const parseResult = farrowingsSchema.safeParse(req.body);
+        if (!parseResult.success) {
+            logger.warn("Validation error on create farrowing");
+            throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));
+        }
+        const newFarrowing = await FarrowingsService.create(parseResult.data);
         logger.info(`Farrowing created: ${JSON.stringify(newFarrowing)}`);
         res.status(201).json(newFarrowing);
     }
 
     async update(req: Request, res: Response) {
+        const parseResult = farrowingsSchema.partial().safeParse(req.body);
+        if (!parseResult.success) {
+            logger.warn("Validation error on update farrowing");
+            throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));
+        }
         const id = Number(req.params.id);
-        const data = req.body;
-        logger.info(`Updating farrowing id ${id} with data: ${JSON.stringify(data)}`);
-        const updated = await FarrowingsService.update(id, data);
+        const updated = await FarrowingsService.update(id, parseResult.data);
         logger.info(`Farrowing updated: ${JSON.stringify(updated)}`);
         res.json(updated);
     }
 
     async delete(req: Request, res: Response) {
         const id = Number(req.params.id);
-        logger.info(`Deleting farrowing with id: ${id}`);
-        await FarrowingsService.delete(id);
+        const deleted = await FarrowingsService.delete(id);
+        if (!deleted) {
+            logger.warn(`Farrowing with id ${id} not found for delete`);
+            throw ApiError.notFound(`Farrowing with id ${id} not found`);
+        }
         logger.info(`Farrowing with id ${id} deleted`);
         res.status(204).send();
     }
 
     async getAllFarrowingsBySow(req: Request, res: Response) {
         const sowId = Number(req.params.sowId);
-        logger.info(`Fetching all farrowings for sow id: ${sowId}`);
         const farrowings = await FarrowingsService.getAllFarrowingsBySow(sowId);
+        if (!farrowings) {
+            logger.warn(`No farrowings found for sow id ${sowId}`);
+            throw ApiError.notFound("No farrowings found for the given sow");
+        }
         logger.info(`Found ${farrowings.length} farrowings for sow id ${sowId}`);
         res.json(farrowings);
     }

@@ -11,13 +11,13 @@ class StatusService {
     });
   }
 
-  async create(status_name: string) {
+  async create(status_name: any) {
     return await prisma.status.create({
       data: { status_name },
     });
   }
 
-  async update(id: number, status_name: string) {
+  async update(id: number, status_name: any) {
     return await prisma.status.update({
       where: { status_id: id },
       data: { status_name },

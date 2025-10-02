@@ -36,7 +36,7 @@ class BreedingSowsService {
   async getAllByStatusId(statusId: number) {
   return await prisma.breedingsows.findMany({
     where: { status_id: statusId },
-    include: { status: true }, // optional, if you want to include status details
+    // include: { status: true }, // optional, if you want to include status details
   });
   }
 

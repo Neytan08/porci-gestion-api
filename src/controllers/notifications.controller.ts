@@ -1,11 +1,21 @@
 import { Request, Response } from "express";
 import NotificationsService from "../services/notifications.service";
 import logger from '../utils/logger';
+import ApiError from "../utils/apiError";
+import { z } from "zod";
+
+// Notifications schema validation using Zod
+const notificationsSchema = z.object({
+    sow_id: z.number().int().positive(),
+    event_type: z.string().min(1),
+    schedule_date: z.string().refine(date => !isNaN(Date.parse(date)), { message: "Invalid schedule_date format" }),
+    status: z.string().min(1),
+    note: z.string().optional()
+});
 
 class NotificationsController {
 
     async getAll(_: Request, res: Response) {
-        logger.info("Fetching all notifications");
         const notifications = await NotificationsService.getAll();
         logger.info(`Found ${notifications.length} notifications`);
         res.json(notifications);
@@ -13,37 +23,45 @@ class NotificationsController {
 
     async getById(req: Request, res: Response) {
         const id = Number(req.params.id);
-        logger.info(`Fetching notification with id: ${id}`);
         const notification = await NotificationsService.getById(id);
         if (!notification) {
             logger.warn(`Notification with id ${id} not found`);
-            return res.status(404).json({ message: "Notification not found" });
+            throw ApiError.notFound("Notification not found");
         }
         logger.info(`Notification found: ${JSON.stringify(notification)}`);
         return res.json(notification);
     }
 
     async create(req: Request, res: Response) {
-        const data = req.body;
-        logger.info(`Creating notification with data: ${JSON.stringify(data)}`);
-        const newNotification = await NotificationsService.create(data);
+        const parseResult = notificationsSchema.safeParse(req.body);
+        if (!parseResult.success) {
+            logger.warn("Validation error on create notification");
+            throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));
+        }
+        const newNotification = await NotificationsService.create(parseResult.data);
         logger.info(`Notification created: ${JSON.stringify(newNotification)}`);
         res.status(201).json(newNotification);
     }
 
     async update(req: Request, res: Response) {
+        const parseResult = notificationsSchema.partial().safeParse(req.body);
+        if (!parseResult.success) {
+            logger.warn("Validation error on update notification");
+            throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));
+        }
         const id = Number(req.params.id);
-        const data = req.body;
-        logger.info(`Updating notification id ${id} with data: ${JSON.stringify(data)}`);
-        const updatedNotification = await NotificationsService.update(id, data);
+        const updatedNotification = await NotificationsService.update(id, parseResult.data);
         logger.info(`Notification updated: ${JSON.stringify(updatedNotification)}`);
         res.json(updatedNotification);
     }
 
     async delete(req: Request, res: Response) {
         const id = Number(req.params.id);
-        logger.info(`Deleting notification with id: ${id}`);
-        await NotificationsService.delete(id);
+        const deleted = await NotificationsService.delete(id);
+        if (!deleted) {
+            logger.warn(`Notification with id ${id} not found for delete`);
+            throw ApiError.notFound(`Notification with id ${id} not found`);
+        }
         logger.info(`Notification with id ${id} deleted`);
         res.status(204).send();
     }
