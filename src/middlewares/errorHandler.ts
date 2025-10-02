@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ApiError } from '../utils/apiError';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import logger from '../utils/logger';
 
 export function errorHandler(
@@ -20,20 +20,29 @@ export function errorHandler(
 
     // Triggered errors by the routes
     if (err instanceof ApiError) {
-        logger.debug(`ApiError: ${err.message}`);
+        logger.debug(`ApiError code: ${err.statusCode}, ${err.message}`);
         return res.status(err.statusCode).json({ message: err.message });
     }
 
-    if (err instanceof PrismaClientKnownRequestError) {
-        // Prisma codes errors
-        logger.debug(`Prisma error: ${err.code}`);
-        return res.status(400).json({ message: `Prisma error: ${err.code}` });
+    // Prisma Client Known Errors
+    if (err?.name === "PrismaClientKnownRequestError") {
+        const prismaError = err as PrismaClientKnownRequestError;
+        logger.debug(`Prisma error caught: ${prismaError.code}`);
+
+        if (prismaError.code === "P2002") {
+            return res.status(409).json({ message: "Unique constraint failed" });
+        }
+
+        if (prismaError.code === "P2025") {
+            return res.status(404).json({ message: "Record not found" });
+        }
+        return res.status(400).json({ message: `Prisma error: ${prismaError.code}` });
     }
 
     // Validations
     if (err?.name === 'ZodError') {
-        logger.debug('Validation error');
-        return res.status(400).json({ message: 'Validation error', issues: err.errors });
+        logger.debug('Validation zod error');
+        return res.status(400).json({ message: 'Validation zod error', issues: err.errors });
     }
 
     // Fallback (error did't find a specific handler)
