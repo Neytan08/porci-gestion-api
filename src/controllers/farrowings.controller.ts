@@ -2,20 +2,7 @@ import { Request, Response } from "express";
 import FarrowingsService from "../services/farrowings.service";
 import logger from '../utils/logger';
 import ApiError from '../utils/apiError';
-import { z } from "zod";
-
-// Farrowing Schema validation using Zod
-const farrowingsSchema = z.object({
-    sow_id: z.number().int().positive(),
-    farrowing_date: z.string().refine(date => !isNaN(Date.parse(date)), { message: "Invalid farrowing_date format" }),
-    male_piglets: z.number().int().nonnegative(),
-    female_piglets: z.number().int().nonnegative(),
-    still_births: z.number().int().nonnegative(),
-    mummies: z.number().int().nonnegative(),
-    weaning_date: z.string().refine(date => !isNaN(Date.parse(date)), { message: "Invalid weaning_date format" }),
-    weaned_piglets: z.number().int().nonnegative(),
-    notes: z.string().optional()
-});
+import { farrowingsSchema, farrowingUpdateSchema } from "../schemas_validations/farrowings.schema";
 
 class FarrowingsController {
     async getAll(_: Request, res: Response) {
@@ -47,7 +34,7 @@ class FarrowingsController {
     }
 
     async update(req: Request, res: Response) {
-        const parseResult = farrowingsSchema.partial().safeParse(req.body);
+        const parseResult = farrowingUpdateSchema.safeParse(req.body);
         if (!parseResult.success) {
             logger.warn("Validation error on update farrowing");
             throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));

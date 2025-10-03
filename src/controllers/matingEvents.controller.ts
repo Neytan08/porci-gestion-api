@@ -2,16 +2,7 @@ import { Request, Response} from "express";
 import MatingEventsService from "../services/matingEvents.service";
 import logger from '../utils/logger';
 import ApiError from '../utils/apiError';
-import { z } from "zod";
-
-// Mating Events schema validation using Zod
-const matingEventsSchema = z.object({
-  sow_id: z.number().int().positive(),
-  boar_id: z.number().int().positive(),
-  insemination_date: z.string().refine(date => !isNaN(Date.parse(date)), { message: "Invalid insemination_date format" }),
-  insemination_type: z.enum(["natural", "artificial"]),
-  notes: z.string().optional()
-});
+import { matingEventsSchema, matingEventUpdateSchema } from "../schemas_validations/matingEvents.schema";
 
 class MatingEventsController {
 
@@ -44,7 +35,7 @@ class MatingEventsController {
     }
 
     async update(req: Request, res: Response) {
-        const parseResult = matingEventsSchema.partial().safeParse(req.body);
+        const parseResult = matingEventUpdateSchema.safeParse(req.body);
         if (!parseResult.success) {
             logger.warn("Validation error on update mating event");
             throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));

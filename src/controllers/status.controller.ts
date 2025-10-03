@@ -2,12 +2,7 @@ import { Request, Response } from "express";
 import StatusService from "../services/status.service";
 import logger from "../utils/logger";
 import ApiError from "../utils/apiError";
-import { z } from "zod";
-
-// Schema validation using Zod
-const statusSchema = z.object({
-  status_name: z.string().min(1)
-});
+import { statusSchema, statusUpdateSchema } from "../schemas_validations/status.schema";
 
 class StatusController {
 
@@ -40,7 +35,7 @@ class StatusController {
   }
 
   async update(req: Request, res: Response) {
-    const parseResult = statusSchema.partial().safeParse(req.body);
+    const parseResult = statusUpdateSchema.safeParse(req.body);
     if (!parseResult.success) {
       logger.warn("Validation error on update status");
       throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));

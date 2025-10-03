@@ -2,18 +2,7 @@ import { Request, Response } from "express";
 import BoarsService from "../services/boars.service";
 import logger from '../utils/logger';
 import ApiError from '../utils/apiError';
-import { z } from "zod";
-
-// Boars schema validation using Zod
-const boarsSchema = z.object({
-  boar_tag_number: z.string().min(1),
-  weight: z.number().positive().optional(),
-  length: z.number().positive().optional(),
-  breed: z.string().min(1),
-  entry_date: z.string().refine(date => !isNaN(Date.parse(date)), { message: "Invalid entry_date format" }),
-  removal_date: z.string().refine(date => !isNaN(Date.parse(date)), { message: "Invalid removal_date format" }).optional(),
-  removal_reason: z.string().optional()
-});
+import { boarsSchema, boarsUpdateSchema } from "../schemas_validations/boars.schema";
 
 class BoarsController {
 
@@ -46,7 +35,7 @@ class BoarsController {
   }
 
   async update(req: Request, res: Response) {
-    const parseResult = boarsSchema.partial().safeParse(req.body);
+    const parseResult = boarsUpdateSchema.safeParse(req.body);
     if (!parseResult.success) {
       logger.warn("Validation error on update boar");
       throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));

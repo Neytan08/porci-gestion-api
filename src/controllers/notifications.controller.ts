@@ -2,16 +2,7 @@ import { Request, Response } from "express";
 import NotificationsService from "../services/notifications.service";
 import logger from '../utils/logger';
 import ApiError from "../utils/apiError";
-import { z } from "zod";
-
-// Notifications schema validation using Zod
-const notificationsSchema = z.object({
-    sow_id: z.number().int().positive(),
-    event_type: z.string().min(1),
-    schedule_date: z.string().refine(date => !isNaN(Date.parse(date)), { message: "Invalid schedule_date format" }),
-    status: z.string().min(1),
-    note: z.string().optional()
-});
+import { notificationsSchema, notificationUpdateSchema } from "../schemas_validations/notificacions.schema";
 
 class NotificationsController {
 
@@ -44,7 +35,7 @@ class NotificationsController {
     }
 
     async update(req: Request, res: Response) {
-        const parseResult = notificationsSchema.partial().safeParse(req.body);
+        const parseResult = notificationUpdateSchema.safeParse(req.body);
         if (!parseResult.success) {
             logger.warn("Validation error on update notification");
             throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));
