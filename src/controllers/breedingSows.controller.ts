@@ -2,22 +2,7 @@ import { Request, Response } from "express";
 import BreedingSowsService from "../services/breedingSows.service";
 import logger from '../utils/logger';
 import ApiError from '../utils/apiError';
-import { z } from "zod";
-
-// Breeding Sows Schema validation using Zod
-const breedingSowsschema = z.object({
-  status_id: z.number().int().positive(),
-  sow_tag_number: z.string().min(1),
-  entry_date: z.string().refine(date => !isNaN(Date.parse(date)), { message: "Invalid entry_date format" }),
-  weight: z.number().positive(),
-  length: z.number().positive(),
-  mammary_glands: z.number().int().positive(),
-  breed: z.string().min(1),
-  farrowing_number: z.number().int().nonnegative(),
-  last_weaning_date: z.string().refine(date => !isNaN(Date.parse(date)), { message: "Invalid last_weaning_date format" }).optional(),
-  removal_date: z.string().refine(date => !isNaN(Date.parse(date)), { message: "Invalid removal_date format" }).optional(),
-  removal_reason: z.string().optional()
-});
+import { breedingSowsschema, breedingSowsUpdateSchema } from "../schemas_validations/breedingSows.schema";
 
 class BreedingSowsController {
   async getAll(_: Request, res: Response) {
@@ -49,7 +34,7 @@ class BreedingSowsController {
   }
 
   async update(req: Request, res: Response) {
-    const parseResult = breedingSowsschema.partial().safeParse(req.body);
+    const parseResult = breedingSowsUpdateSchema.safeParse(req.body);
     if (!parseResult.success) {
       logger.warn("Validation error on update breeding sow");
       throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));

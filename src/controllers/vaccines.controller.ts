@@ -2,19 +2,7 @@ import { Request, Response } from "express";
 import VaccinesService from "../services/vaccines.service";
 import logger from '../utils/logger';
 import ApiError from '../utils/apiError';
-import { z } from "zod";
-
-// Vaccine schema validation using Zod
-const vaccineSchema = z.object({
-  sow_id: z.number().int().positive(),
-  boar_id: z.number().int().positive(),
-  vaccine_id: z.number().int().positive(),
-  administration_date: z.string().refine(date => !isNaN(Date.parse(date)), { message: "Invalid administration_date format" }),
-  dose: z.string().max(50),
-  administration_route: z.string().max(50),
-  administered_by: z.string().max(100),
-  note: z.string().optional()
-});
+import { vaccineSchema, vaccineUpdateSchema } from "../schemas_validations/vaccines.schema";
 
 class VaccinesController {
 
@@ -47,7 +35,7 @@ class VaccinesController {
     }
 
     async update(req: Request, res: Response) {
-        const parseResult = vaccineSchema.partial().safeParse(req.body);
+        const parseResult = vaccineUpdateSchema.safeParse(req.body);
         if (!parseResult.success) {
             logger.warn("Validation error on update vaccine");
             throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));

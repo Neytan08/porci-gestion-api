@@ -2,12 +2,7 @@ import {Request, Response} from 'express';
 import VaccineTypesService from '../services/vaccineTypes.service';
 import logger from '../utils/logger';
 import ApiError from '../utils/apiError';
-import { z } from "zod";
-
-// Vaccine Type schema validation using Zod
-const vaccineTypesSchema = z.object({
-  vaccine_name: z.string().min(1)
-});
+import { vaccineTypesSchema, vaccineUpdateSchema  } from '../schemas_validations/vaccineTypes.schema';
 
 class VaccineTypesController {
 
@@ -40,7 +35,7 @@ class VaccineTypesController {
     }
 
     async update(req: Request, res: Response) {
-        const parseResult = vaccineTypesSchema.partial().safeParse(req.body);
+        const parseResult = vaccineUpdateSchema.safeParse(req.body);
         if (!parseResult.success) {
             logger.warn("Validation error on update vaccine type");
             throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));
