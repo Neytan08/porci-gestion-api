@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import VaccinesService from "../services/vaccines.service";
 import logger from '../utils/logger';
 import ApiError from '../utils/apiError';
-import { vaccineSchema, vaccineUpdateSchema } from "../schemas_validations/vaccines.schema";
+import { vaccinesSchema, vaccinesUpdateSchema } from "../schemas_validations/vaccines.schema";
 
 class VaccinesController {
 
@@ -24,7 +24,7 @@ class VaccinesController {
     }
 
     async create(req: Request, res: Response) {
-        const parseResult = vaccineSchema.safeParse(req.body);
+        const parseResult = vaccinesSchema.safeParse(req.body);
         if (!parseResult.success) {
             logger.warn("Validation error on create vaccine");
             throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));
@@ -35,7 +35,7 @@ class VaccinesController {
     }
 
     async update(req: Request, res: Response) {
-        const parseResult = vaccineUpdateSchema.safeParse(req.body);
+        const parseResult = vaccinesUpdateSchema.safeParse(req.body);
         if (!parseResult.success) {
             logger.warn("Validation error on update vaccine");
             throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));

@@ -9,11 +9,28 @@ import vaccinesRoutes from "./routes/vaccines.route";
 import vaccineTypesRoutes from "./routes/vaccineTypes.route";
 import { errorHandler } from './middlewares/errorHandler';
 import logger from './utils/logger';
-
+import helmet from "helmet";
+import cors from "cors";
+import { setupSwagger } from "./swagger";
 
 const app = express();
 
+// Middlewares to enhance API security
+app.use(helmet());
+
 app.use(express.json());
+
+// Enable CORS for all routes
+app.use(cors());
+
+/** If you want to restrict CORS to specific origins, methods, or headers, you can configure it like this:
+ * app.use(cors({
+ * origin: ["http://localhost:5173", "https://midominio.com"],
+ * methods: ["GET", "POST", "PUT", "DELETE"],
+ * allowedHeaders: ["Content-Type", "Authorization"],
+ * }));
+ * This configuration allows requests only from the specified origins and methods.
+ **/
 
 // Welcome route (For now)
 app.get("/", (_, res) => {
@@ -32,9 +49,11 @@ app.use("/api/vaccinetypes", vaccineTypesRoutes);
 
 app.use(errorHandler);
 
-
 const PORT = process.env.PORT || 3000;
+const SWAGGER_PATH = process.env.SWAGGER_PATH || 'api-docs';
+setupSwagger(app);
 
 app.listen(PORT, () => {
-  logger.info(`🚀 Server running on http://localhost:${PORT}`);
+  logger.info(`Server running on http://localhost:${PORT}`);
+  logger.info(`Swagger docs available at http://localhost:${PORT}/${SWAGGER_PATH}`);
 });
