@@ -12,15 +12,17 @@ model breedingsows {
   sow_id            Int             @id @default(autoincrement())
   status_id         Int
   sow_tag_number    String          @unique @db.VarChar(50)
-  entry_date        DateTime        @db.Date
+  entry_date        DateTime        @db.Timestamp(6)
   weight            Decimal?        @db.Decimal(5, 2)
   length            Decimal?        @db.Decimal(5, 2)
   mammary_glands    Int?
-  breed             String?         @db.VarChar(50)
   farrowing_number  Int?            @default(0)
   last_weaning_date DateTime?       @db.Date
   removal_date      DateTime?       @db.Date
   removal_reason    String?
+  description       String?
+  breed_id          Int?
+  breeds            breeds?         @relation(fields: [breed_id], references: [breed_id], onUpdate: NoAction)
   status            status          @relation(fields: [status_id], references: [status_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_status")
   farrowings        farrowings[]
   matingevents      matingevents[]
@@ -102,4 +104,11 @@ model vaccinetypes {
   vaccine_id   Int        @id @default(autoincrement())
   vaccine_name String     @db.VarChar(100)
   vaccines     vaccines[]
+}
+
+model breeds {
+  breed_id     Int            @id @default(autoincrement())
+  breed_name   String         @unique @db.VarChar(100)
+  description  String?
+  breedingsows breedingsows[]
 }

@@ -1,5 +1,6 @@
 import express from "express";
 import statusRoutes from "./routes/status.route";
+import breedRoutes from "./routes/breeds.route";
 import breedingSowRoutes from "./routes/breedingSows.route";
 import farrowingsRoutes from "./routes/farrowings.route";
 import boarsRoutes from "./routes/boars.route";
@@ -39,6 +40,7 @@ app.get("/", (_, res) => {
 
 // Routes
 app.use("/api/status", statusRoutes);
+app.use("/api/breeds", breedRoutes)
 app.use("/api/breedingsows", breedingSowRoutes);
 app.use("/api/farrowings", farrowingsRoutes);
 app.use("/api/boars", boarsRoutes);
