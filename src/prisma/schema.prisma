@@ -9,25 +9,22 @@ datasource db {
 }
 
 model breedingsows {
-  sow_id            Int             @id @default(autoincrement())
+  sow_id            Int          @id @default(autoincrement())
   status_id         Int
-  sow_tag_number    String          @unique @db.VarChar(50)
-  entry_date        DateTime        @db.Timestamp(6)
-  weight            Decimal?        @db.Decimal(5, 2)
-  length            Decimal?        @db.Decimal(5, 2)
+  breed_id          Int
+  sow_tag_number    String       @unique @db.VarChar(50)
+  entry_date        DateTime     @db.Timestamp(6)
+  weight            Decimal?     @db.Decimal(5, 2)
+  length            Decimal?     @db.Decimal(5, 2)
   mammary_glands    Int?
-  farrowing_number  Int?            @default(0)
-  last_weaning_date DateTime?       @db.Date
-  removal_date      DateTime?       @db.Date
+  farrowing_number  Int?         @default(0)
+  last_weaning_date DateTime?    @db.Timestamp(6)
+  removal_date      DateTime?    @db.Timestamp(6)
   removal_reason    String?
   description       String?
-  breed_id          Int?
-  breeds            breeds?         @relation(fields: [breed_id], references: [breed_id], onUpdate: NoAction)
-  status            status          @relation(fields: [status_id], references: [status_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_status")
+  breeds            breed        @relation(fields: [breed_id], references: [breed_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_breed")
+  status            status       @relation(fields: [status_id], references: [status_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_status")
   farrowings        farrowings[]
-  matingevents      matingevents[]
-  notifications     notifications[]
-  vaccines          vaccines[]
 }
 
 model status {
@@ -65,39 +62,36 @@ model boars {
 }
 
 model matingevents {
-  mating_id         Int          @id @default(autoincrement())
+  mating_id         Int      @id @default(autoincrement())
   sow_id            Int
   boar_id           Int?
-  insemination_date DateTime     @db.Date
-  insemination_type String?      @db.VarChar(50)
+  insemination_date DateTime @db.Date
+  insemination_type String?  @db.VarChar(50)
   notes             String?
-  boars             boars?       @relation(fields: [boar_id], references: [boar_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_boar")
-  breedingsows      breedingsows @relation(fields: [sow_id], references: [sow_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_sow")
+  boars             boars?   @relation(fields: [boar_id], references: [boar_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_boar")
 }
 
 model notifications {
-  notification_id Int          @id @default(autoincrement())
+  notification_id Int      @id @default(autoincrement())
   sow_id          Int
-  event_type      String       @db.VarChar(100)
-  scheduled_date  DateTime     @db.Date
-  status          String?      @db.VarChar(50)
+  event_type      String   @db.VarChar(100)
+  scheduled_date  DateTime @db.Date
+  status          String?  @db.VarChar(50)
   note            String?
-  breedingsows    breedingsows @relation(fields: [sow_id], references: [sow_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_sow_notification")
 }
 
 model vaccines {
-  vaccination_id       Int           @id @default(autoincrement())
+  vaccination_id       Int          @id @default(autoincrement())
   sow_id               Int?
   boar_id              Int?
   vaccine_id           Int
-  administration_date  DateTime      @db.Date
-  dose                 String?       @db.VarChar(50)
-  administration_route String?       @db.VarChar(50)
-  administered_by      String?       @db.VarChar(100)
+  administration_date  DateTime     @db.Date
+  dose                 String?      @db.VarChar(50)
+  administration_route String?      @db.VarChar(50)
+  administered_by      String?      @db.VarChar(100)
   note                 String?
-  boars                boars?        @relation(fields: [boar_id], references: [boar_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_boar")
-  breedingsows         breedingsows? @relation(fields: [sow_id], references: [sow_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_sow")
-  vaccinetypes         vaccinetypes  @relation(fields: [vaccine_id], references: [vaccine_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_vaccine")
+  boars                boars?       @relation(fields: [boar_id], references: [boar_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_boar")
+  vaccinetypes         vaccinetypes @relation(fields: [vaccine_id], references: [vaccine_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_vaccine")
 }
 
 model vaccinetypes {
@@ -106,9 +100,9 @@ model vaccinetypes {
   vaccines     vaccines[]
 }
 
-model breeds {
-  breed_id     Int            @id @default(autoincrement())
-  breed_name   String         @unique @db.VarChar(100)
+model breed {
+  breed_id     Int            @id(map: "breeds_pkey") @default(autoincrement())
+  breed_name   String         @unique(map: "breeds_breed_name_key") @db.VarChar(100)
   description  String?
   breedingsows breedingsows[]
 }

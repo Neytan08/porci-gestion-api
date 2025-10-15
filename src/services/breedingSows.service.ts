@@ -10,7 +10,7 @@ class BreedingSowsService {
   async getById(id: number) {
     return await prisma.breedingsows.findUnique({
       where: { sow_id: id },
-      include: { status: true },
+      include: { status: true, breeds: true},
     });
   }
 
