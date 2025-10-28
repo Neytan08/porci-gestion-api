@@ -49,16 +49,16 @@ model farrowings {
 }
 
 model boars {
-  boar_id         Int            @id @default(autoincrement())
-  boar_tag_number String         @unique @db.VarChar(50)
-  weight          Decimal?       @db.Decimal(5, 2)
-  length          Decimal?       @db.Decimal(5, 2)
-  breed           String?        @db.VarChar(50)
-  entry_date      DateTime?      @db.Date
-  removal_date    DateTime?      @db.Date
+  boar_id         Int       @id @default(autoincrement())
+  breed_id        Int
+  boar_tag_number String    @unique @db.VarChar(50)
+  weight          Decimal?  @db.Decimal(5, 2)
+  length          Decimal?  @db.Decimal(5, 2)
+  entry_date      DateTime  @db.Timestamp(6)
+  removal_date    DateTime? @db.Timestamp(6)
   removal_reason  String?
-  matingevents    matingevents[]
-  vaccines        vaccines[]
+  description     String?
+  breed           breed     @relation(fields: [breed_id], references: [breed_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_breed")
 }
 
 model matingevents {
@@ -68,7 +68,6 @@ model matingevents {
   insemination_date DateTime @db.Date
   insemination_type String?  @db.VarChar(50)
   notes             String?
-  boars             boars?   @relation(fields: [boar_id], references: [boar_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_boar")
 }
 
 model notifications {
@@ -90,7 +89,6 @@ model vaccines {
   administration_route String?      @db.VarChar(50)
   administered_by      String?      @db.VarChar(100)
   note                 String?
-  boars                boars?       @relation(fields: [boar_id], references: [boar_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_boar")
   vaccinetypes         vaccinetypes @relation(fields: [vaccine_id], references: [vaccine_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_vaccine")
 }
 
@@ -104,5 +102,6 @@ model breed {
   breed_id     Int            @id(map: "breeds_pkey") @default(autoincrement())
   breed_name   String         @unique(map: "breeds_breed_name_key") @db.VarChar(100)
   description  String?
+  boars        boars[]
   breedingsows breedingsows[]
 }

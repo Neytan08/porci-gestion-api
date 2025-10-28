@@ -3,7 +3,7 @@ import prisma from "../prismaClient";
 class BreedingSowsService {
   async getAll() {
     return await prisma.breedingsows.findMany({
-      include: { status: true },
+      include: { status: true, breeds: true},
     });
   }
 
