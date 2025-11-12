@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // Vaccines schema validation using Zod
-export const vaccineSchema = z.object({
+export const vaccinesSchema = z.object({
   sow_id: z.number().int().positive(),
   boar_id: z.number().int().positive(),
   vaccine_id: z.number().int().positive(),
@@ -13,4 +13,4 @@ export const vaccineSchema = z.object({
 });
 
 // Partial schema allows optional fields for updates
-export const vaccineUpdateSchema = vaccineSchema.partial();
+export const vaccinesUpdateSchema = vaccinesSchema.partial();

@@ -6,4 +6,4 @@ export const vaccineTypesSchema = z.object({
 });
 
 // Partial schema allows optional fields for updates
-export const vaccineUpdateSchema = vaccineTypesSchema.partial();
+export const vaccineTypesUpdateSchema = vaccineTypesSchema.partial();

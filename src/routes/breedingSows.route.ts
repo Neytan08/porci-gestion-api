@@ -4,12 +4,212 @@ import { asyncHandler } from "../middlewares/asyncHandler";
 
 const router = Router();
 
+/**
+ * @swagger
+ * tags:
+ *   name: BreedingSows
+ *   description: Operations related to breeding sows
+ */
+
+/**
+ * @swagger
+ * /breedingsows:
+ *   get:
+ *     summary: Get all breeding sows
+ *     tags: [BreedingSows]
+ *     responses:
+ *       200:
+ *         description: List of all breeding sows
+ */
 router.get("/", asyncHandler(BreedingSowController.getAll.bind(BreedingSowController)));
+
+/**
+ * @swagger
+ * /breedingsows/{id}:
+ *   get:
+ *     summary: Get a breeding sow by ID
+ *     tags: [BreedingSows]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID of the breeding sow
+ *     responses:
+ *       200:
+ *         description: Breeding sow found
+ *       404:
+ *         description: Breeding sow not found
+ */
 router.get("/:id", asyncHandler(BreedingSowController.getById.bind(BreedingSowController)));
+
+/**
+ * @swagger
+ * /breedingsows:
+ *   post:
+ *     summary: Create a new breeding sow
+ *     tags: [BreedingSows]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status_id:
+ *                 type: integer
+ *                 example: 1
+ *               sow_tag_number:
+ *                 type: string
+ *                 example: "SOW-0010"
+ *               entry_date:
+ *                 type: string
+ *                 format: date
+ *                 example: "2025-10-05"
+ *               weight:
+ *                 type: number
+ *                 example: 180.5
+ *               length:
+ *                 type: number
+ *                 example: 145.2
+ *               mammary_glands:
+ *                 type: integer
+ *                 example: 14
+ *               breed:
+ *                 type: string
+ *                 example: "Yorkshire"
+ *               farrowing_number:
+ *                 type: integer
+ *                 example: 2
+ *               last_weaning_date:
+ *                 type: string
+ *                 format: date
+ *                 example: "2025-09-15"
+ *               removal_date:
+ *                 type: string
+ *                 format: date
+ *                 example: null
+ *               removal_reason:
+ *                 type: string
+ *                 example: null
+ *     responses:
+ *       201:
+ *         description: Breeding sow created successfully
+ *       400:
+ *         description: Validation error
+ */
 router.post("/", asyncHandler(BreedingSowController.create.bind(BreedingSowController)));
+
+/**
+ * @swagger
+ * /breedingsows/{id}:
+ *   put:
+ *     summary: Update an existing breeding sow
+ *     tags: [BreedingSows]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID of the breeding sow to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               weight:
+ *                 type: number
+ *                 example: 185.0
+ *               length:
+ *                 type: number
+ *                 example: 150.0
+ *               mammary_glands:
+ *                 type: integer
+ *                 example: 16
+ *               last_weaning_date:
+ *                 type: string
+ *                 format: date
+ *                 example: "2025-09-20"
+ *               removal_date:
+ *                 type: string
+ *                 format: date
+ *                 example: null
+ *               removal_reason:
+ *                 type: string
+ *                 example: null
+ *     responses:
+ *       200:
+ *         description: Breeding sow updated successfully
+ *       404:
+ *         description: Breeding sow not found
+ */
 router.put("/:id", asyncHandler(BreedingSowController.update.bind(BreedingSowController)));
+
+/**
+ * @swagger
+ * /breedingsows/{id}:
+ *   delete:
+ *     summary: Delete a breeding sow by ID
+ *     tags: [BreedingSows]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID of the breeding sow to delete
+ *     responses:
+ *       204:
+ *         description: Breeding sow deleted successfully
+ *       404:
+ *         description: Breeding sow not found
+ */
 router.delete("/:id", asyncHandler(BreedingSowController.delete.bind(BreedingSowController)));
+
+/**
+ * @swagger
+ * /breedingsows/status/{statusId}:
+ *   get:
+ *     summary: Get all breeding sows by status ID
+ *     tags: [BreedingSows]
+ *     parameters:
+ *       - in: path
+ *         name: statusId
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: Status ID to filter breeding sows
+ *     responses:
+ *       200:
+ *         description: List of breeding sows with the specified status
+ *       404:
+ *         description: No breeding sows found for this status
+ */
 router.get("/status/:statusId", asyncHandler(BreedingSowController.getAllByStatusId.bind(BreedingSowController)));
+
+/**
+ * @swagger
+ * /breedingsows/{sowId}/farrowings/count:
+ *   get:
+ *     summary: Get the number of farrowings for a specific sow
+ *     tags: [BreedingSows]
+ *     parameters:
+ *       - in: path
+ *         name: sowId
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID of the sow
+ *     responses:
+ *       200:
+ *         description: Number of farrowings for the sow
+ *       404:
+ *         description: No farrowing records found for this sow
+ */
 router.get("/:sowId/farrowings/count", asyncHandler(BreedingSowController.countFarrowingsBySow.bind(BreedingSowController)));
 
 export default router;

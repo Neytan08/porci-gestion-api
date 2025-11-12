@@ -2,7 +2,7 @@ import {Request, Response} from 'express';
 import VaccineTypesService from '../services/vaccineTypes.service';
 import logger from '../utils/logger';
 import ApiError from '../utils/apiError';
-import { vaccineTypesSchema, vaccineUpdateSchema  } from '../schemas_validations/vaccineTypes.schema';
+import { vaccineTypesSchema, vaccineTypesUpdateSchema  } from '../schemas_validations/vaccineTypes.schema';
 
 class VaccineTypesController {
 
@@ -35,7 +35,7 @@ class VaccineTypesController {
     }
 
     async update(req: Request, res: Response) {
-        const parseResult = vaccineUpdateSchema.safeParse(req.body);
+        const parseResult = vaccineTypesUpdateSchema.safeParse(req.body);
         if (!parseResult.success) {
             logger.warn("Validation error on update vaccine type");
             throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));
