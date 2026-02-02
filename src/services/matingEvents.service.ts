@@ -42,6 +42,29 @@ class MatingEventsService {
             where: { boar_id: boarId },
         }); 
     }
+
+    async getAllGroupedByPregnancyResult() {
+    // Fetch all mating events ordered by pregnancy_result
+    const events = await prisma.matingevents.findMany({
+      orderBy: { pregnancy_result: 'asc' },
+      include: {
+        breedingsows: { select: { sow_tag_number: true } },
+      },
+    });
+    // Group events by pregnancy_result
+    const map = new Map<string | null, typeof events>();
+    for (const ev of events) {
+      const key = ev.pregnancy_result ?? null;
+      const arr = map.get(key) ?? [];
+      arr.push(ev);
+      map.set(key, arr);
+    }
+    // Convert map to desired array format
+    return Array.from(map, ([pregnancy_result, events]) => ({
+      pregnancy_result,
+      events,
+    }));
+  }
 }
 
 export default new MatingEventsService();

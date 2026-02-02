@@ -62,23 +62,29 @@ router.get("/:id", asyncHandler(BoarsController.getById.bind(BoarsController)));
  *                 example: "B010"
  *               weight:
  *                 type: number
- *                 example: 260.5
+ *                 example: null
  *               length:
  *                 type: number
- *                 example: 160.2
- *               breed:
- *                 type: string
- *                 example: "Duroc"
- *               entry_date:
+ *                 example: null
+ *               birth_date:
  *                 type: string
  *                 format: date
- *                 example: "2025-10-05"
+ *                 example: "2023-06-15"
+ *               breed_id:
+ *                 type: integer
+ *                 example: 1
  *               removal_date:
  *                 type: string
  *                 format: date
  *                 example: null
  *               removal_reason:
  *                 type: string
+ *                 example: null
+ *               description:
+ *                 type: string
+ *                 example: null
+ *               age:
+ *                 type: number
  *                 example: null
  *     responses:
  *       201:

@@ -78,6 +78,12 @@ class MatingEventsController {
         logger.info(`Found ${events.length} mating events for boar id ${boarId}`);
         res.json(events);
     }
+
+    async getAllGroupedByPregnancyResult(_: Request, res: Response) {
+        const groupedEvents = await MatingEventsService.getAllGroupedByPregnancyResult();
+        logger.info(`Grouped mating events by pregnancy result`);
+        res.json(groupedEvents);
+    }
 }
 
 export default new MatingEventsController();

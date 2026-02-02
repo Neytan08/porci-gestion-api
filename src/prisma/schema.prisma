@@ -9,22 +9,22 @@ datasource db {
 }
 
 model breedingsows {
-  sow_id            Int          @id @default(autoincrement())
+  sow_id            Int            @id @default(autoincrement())
   status_id         Int
   breed_id          Int
-  sow_tag_number    String       @unique @db.VarChar(50)
-  entry_date        DateTime     @db.Timestamp(6)
-  weight            Decimal?     @db.Decimal(5, 2)
-  length            Decimal?     @db.Decimal(5, 2)
+  sow_tag_number    String         @unique @db.VarChar(50)
+  entry_date        DateTime       @db.Date
+  weight            Decimal?       @db.Decimal(5, 2)
+  length            Decimal?       @db.Decimal(5, 2)
   mammary_glands    Int?
-  farrowing_number  Int?         @default(0)
-  last_weaning_date DateTime?    @db.Timestamp(6)
-  removal_date      DateTime?    @db.Timestamp(6)
+  farrowing_number  Int?           @default(0)
+  last_weaning_date DateTime?      @db.Date
+  removal_date      DateTime?      @db.Date
   removal_reason    String?
   description       String?
-  breeds            breed        @relation(fields: [breed_id], references: [breed_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_breed")
-  status            status       @relation(fields: [status_id], references: [status_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_status")
-  farrowings        farrowings[]
+  breeds            breed          @relation(fields: [breed_id], references: [breed_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_breed")
+  status            status         @relation(fields: [status_id], references: [status_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_status")
+  matingevents      matingevents[]
 }
 
 model status {
@@ -49,24 +49,26 @@ model farrowings {
 }
 
 model boars {
-  boar_id         Int       @id @default(autoincrement())
+  boar_id         Int            @id @default(autoincrement())
   breed_id        Int
-  boar_tag_number String    @unique @db.VarChar(50)
-  weight          Decimal?  @db.Decimal(5, 2)
-  length          Decimal?  @db.Decimal(5, 2)
-  entry_date      DateTime  @db.Timestamp(6)
-  removal_date    DateTime? @db.Timestamp(6)
+  boar_tag_number String         @unique @db.VarChar(50)
+  weight          Decimal?       @db.Decimal(5, 2)
+  length          Decimal?       @db.Decimal(5, 2)
+  birth_date      DateTime       @db.Date
+  removal_date    DateTime?      @db.Date
   removal_reason  String?
   description     String?
-  breed           breed     @relation(fields: [breed_id], references: [breed_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_breed")
+  breed           breed          @relation(fields: [breed_id], references: [breed_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_breed")
+  matingevents    matingevents[]
 }
 
 model matingevents {
-  mating_id         Int      @id @default(autoincrement())
+  mating_id         Int          @id @default(autoincrement())
   sow_id            Int
   boar_id           Int?
-  insemination_date DateTime @db.Date
-  insemination_type String?  @db.VarChar(50)
+  insemination_date DateTime     @db.Date
+  insemination_type String?      @db.VarChar(50)
+  pregnancy_result  String?      @db.VarChar(50)
   notes             String?
 }
 
