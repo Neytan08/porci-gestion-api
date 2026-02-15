@@ -3,6 +3,11 @@ import { ApiError } from '../utils/apiError';
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import logger from '../utils/logger';
 
+/**
+ * Global error handling middleware
+ * It centralizes error handling and ensures consistent error responses across the API.
+ * Having this structure is how express identifies it as an error handling middleware (4 parameters).
+*/ 
 export function errorHandler(
     err: any, 
     req: Request, 
@@ -11,7 +16,12 @@ export function errorHandler(
 ) {
     //Log error
     logger.error(`${req.method} ${req.url} - ${err.message}`);
-    
+
+    // Client aborted the request
+    req.on("close", () => {
+        logger.debug("Client closed the connection");
+    });
+
     // JSON parse error (invalid body)
     if (err instanceof SyntaxError && 'body' in err) {
         logger.debug('Invalid JSON body');
