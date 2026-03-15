@@ -5,7 +5,7 @@ import { asyncHandler } from "../middlewares/asyncHandler";
 /**
  * The property "bind" is used to ensure that "this" inside the controller
  * methods refers to the controller instance
-*/
+ */
 
 const router = Router();
 

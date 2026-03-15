@@ -1,24 +1,23 @@
-import statusRoutes from "./routes/status.route";
-import breedRoutes from "./routes/breeds.route";
-import breedingSowRoutes from "./routes/breedingSows.route";
-// import farrowingsRoutes from "./routes/farrowings.route";
+import cors from "cors";
+import express from "express";
+import helmet from "helmet";
+import { errorHandler } from "./middlewares/errorHandler";
 import boarsRoutes from "./routes/boars.route";
+import breedingSowRoutes from "./routes/breedingSows.route";
+import breedRoutes from "./routes/breeds.route";
 import matingEventsRoutes from "./routes/matingEvents.route";
-// import notificationsRoutes from "./routes/notifications.route";
+import statusRoutes from "./routes/status.route";
 import vaccinesRoutes from "./routes/vaccines.route";
 import vaccineTypesRoutes from "./routes/vaccineTypes.route";
-import express from "express";
-import { errorHandler } from './middlewares/errorHandler';
-import logger from './utils/logger';
-import helmet from "helmet";
-import cors from "cors";
 import { setupSwagger } from "./swagger";
+import logger from "./utils/logger";
 
+// import farrowingsRoutes from "./routes/farrowings.route";
+// import notificationsRoutes from "./routes/notifications.route";
 const app = express();
 
 // Middlewares to enhance API security
 app.use(helmet());
-
 
 // Enable CORS for all routes
 app.use(cors());
@@ -30,7 +29,7 @@ app.use(cors());
  * allowedHeaders: ["Content-Type", "Authorization"],
  * }));
  * This configuration allows requests only from the specified origins and methods.
-**/
+ **/
 
 // Welcome route (For now)
 app.get("/", (_, res) => {
@@ -41,7 +40,7 @@ app.get("/", (_, res) => {
 app.use(express.json());
 // Routes
 app.use("/api/status", statusRoutes);
-app.use("/api/breeds", breedRoutes)
+app.use("/api/breeds", breedRoutes);
 app.use("/api/breedingsows", breedingSowRoutes);
 // app.use("/api/farrowings", farrowingsRoutes);
 app.use("/api/boars", boarsRoutes);
@@ -54,7 +53,7 @@ app.use("/api/vaccinetypes", vaccineTypesRoutes);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
-const SWAGGER_PATH = process.env.SWAGGER_PATH || 'api-docs';
+const SWAGGER_PATH = process.env.SWAGGER_PATH || "api-docs";
 setupSwagger(app);
 
 app.listen(PORT, () => {

@@ -40,6 +40,11 @@
     "noUnusedLocals": true,
     "noImplicitReturns": true
   },
+  "editor.defaultFormatter": "biomejs.biome",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": true
+  },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }

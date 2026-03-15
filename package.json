@@ -10,7 +10,8 @@
     "generate": "npx prisma generate --schema=src/prisma/schema.prisma",
     "migrate": "npx prisma migrate dev --schema=src/prisma/schema.prisma",
     "db:pull": "npx prisma db pull --schema=src/prisma/schema.prisma",
-    "db:reset": "npx prisma migrate reset --force --skip-seed --schema=src/prisma/schema.prisma"
+    "db:reset": "npx prisma migrate reset --force --skip-seed --schema=src/prisma/schema.prisma",
+    "format": "npx biome check --write ."
   },
   "keywords": [],
   "author": "",

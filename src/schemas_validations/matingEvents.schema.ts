@@ -4,10 +4,12 @@ import { z } from "zod";
 export const matingEventsSchema = z.object({
   sow_id: z.number().int().positive(),
   boar_id: z.number().int().optional(),
-  insemination_date: z.string().refine(date => !isNaN(Date.parse(date)), { message: "Invalid insemination_date format" }),
+  insemination_date: z
+    .string()
+    .refine((date) => !isNaN(Date.parse(date)), { message: "Invalid insemination_date format" }),
   insemination_type: z.enum(["Monta Natural", "Artificial"]),
-  pregnancy_result: z.enum(["Pendiente","Positivo", "Negativo"]),
-  notes: z.string().optional()
+  pregnancy_result: z.enum(["Pendiente", "Positivo", "Negativo"]),
+  notes: z.string().optional(),
 });
 
 // Partial schema allows optional fields for updates

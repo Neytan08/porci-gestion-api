@@ -2,7 +2,7 @@ export class ApiError extends Error {
   public statusCode: number;
   public isOperational: boolean = true;
 
-  constructor(statusCode : number, message : string, isOperational = true) {
+  constructor(statusCode: number, message: string, isOperational = true) {
     super(message);
     Object.setPrototypeOf(this, new.target.prototype); // restore prototype chain
     this.statusCode = statusCode;

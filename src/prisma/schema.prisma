@@ -33,21 +33,6 @@ model status {
   breedingsows breedingsows[]
 }
 
-model farrowings {
-  farrowing_id   Int          @id @default(autoincrement())
-  sow_id         Int
-  farrowing_date DateTime     @db.Date
-  male_piglets   Int?         @default(0)
-  female_piglets Int?         @default(0)
-  live_births    Int?         @default(dbgenerated("((male_piglets + female_piglets) - still_births)"))
-  still_births   Int?         @default(0)
-  mummies        Int?         @default(0)
-  weaning_date   DateTime?    @default(dbgenerated("(farrowing_date + '30 days'::interval)")) @db.Date
-  weaned_piglets Int?         @default(0)
-  notes          String?
-  breedingsows   breedingsows @relation(fields: [sow_id], references: [sow_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_sow")
-}
-
 model boars {
   boar_id         Int            @id @default(autoincrement())
   breed_id        Int
@@ -70,15 +55,8 @@ model matingevents {
   insemination_type String?      @db.VarChar(50)
   pregnancy_result  String?      @db.VarChar(50)
   notes             String?
-}
-
-model notifications {
-  notification_id Int      @id @default(autoincrement())
-  sow_id          Int
-  event_type      String   @db.VarChar(100)
-  scheduled_date  DateTime @db.Date
-  status          String?  @db.VarChar(50)
-  note            String?
+  boars             boars?       @relation(fields: [boar_id], references: [boar_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_boar")
+  breedingsows      breedingsows @relation(fields: [sow_id], references: [sow_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_sow")
 }
 
 model vaccines {

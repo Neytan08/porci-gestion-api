@@ -1,11 +1,10 @@
-import { Request, Response } from "express";
-import StatusService from "../services/status.service";
-import logger from "../utils/logger";
-import ApiError from "../utils/apiError";
+import type { Request, Response } from "express";
 import { statusSchema, statusUpdateSchema } from "../schemas_validations/status.schema";
+import StatusService from "../services/status.service";
+import ApiError from "../utils/apiError";
+import logger from "../utils/logger";
 
 class StatusController {
-
   async getAll(_: Request, res: Response) {
     const statuses = await StatusService.getAll();
     logger.info(`Found ${statuses.length} statuses`);
@@ -27,7 +26,9 @@ class StatusController {
     const parseResult = statusSchema.safeParse(req.body);
     if (!parseResult.success) {
       logger.warn("Validation on create status");
-      throw ApiError.badRequest("Status name is required" + JSON.stringify(parseResult.error.issues));
+      throw ApiError.badRequest(
+        "Status name is required" + JSON.stringify(parseResult.error.issues),
+      );
     }
     logger.info(`Creating status with name: ${parseResult.data}`);
     const newStatus = await StatusService.create(parseResult.data);

@@ -168,7 +168,10 @@ router.delete("/:id", asyncHandler(matingEventsController.delete.bind(matingEven
  *       404:
  *         description: No mating events found for this sow
  */
-router.get("/sow/:sowId", asyncHandler(matingEventsController.getAllMatingEventsBySow.bind(matingEventsController)));
+router.get(
+  "/sow/:sowId",
+  asyncHandler(matingEventsController.getAllMatingEventsBySow.bind(matingEventsController)),
+);
 
 /**
  * @swagger
@@ -189,7 +192,10 @@ router.get("/sow/:sowId", asyncHandler(matingEventsController.getAllMatingEvents
  *       404:
  *         description: No mating events found for this boar
  */
-router.get("/boar/:boarId", asyncHandler(matingEventsController.getAllMatingEventsByBoar.bind(matingEventsController)));
+router.get(
+  "/boar/:boarId",
+  asyncHandler(matingEventsController.getAllMatingEventsByBoar.bind(matingEventsController)),
+);
 
 /**
  * @swagger
@@ -201,6 +207,9 @@ router.get("/boar/:boarId", asyncHandler(matingEventsController.getAllMatingEven
  *       200:
  *         description: List of mating events grouped by pregnancy result
  */
-router.get("/grouped/pregnancy-result", asyncHandler(matingEventsController.getAllGroupedByPregnancyResult.bind(matingEventsController)));
+router.get(
+  "/grouped/pregnancy-result",
+  asyncHandler(matingEventsController.getAllGroupedByPregnancyResult.bind(matingEventsController)),
+);
 
 export default router;

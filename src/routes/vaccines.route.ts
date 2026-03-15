@@ -5,7 +5,7 @@ import { asyncHandler } from "../middlewares/asyncHandler";
 /**
  * The property "bind" is used to ensure that "this" inside the controller
  * methods refers to the controller instance
-*/
+ */
 
 const router = Router();
 
@@ -169,7 +169,10 @@ router.delete("/:id", asyncHandler(VaccinesController.delete.bind(VaccinesContro
  *       404:
  *         description: No vaccines found for the cow
  */
-router.get("/cow/:cowId", asyncHandler(VaccinesController.getVaccinesByCowId.bind(VaccinesController)));
+router.get(
+  "/cow/:cowId",
+  asyncHandler(VaccinesController.getVaccinesByCowId.bind(VaccinesController)),
+);
 
 /**
  * @swagger
@@ -190,6 +193,9 @@ router.get("/cow/:cowId", asyncHandler(VaccinesController.getVaccinesByCowId.bin
  *       404:
  *         description: No vaccines found for the boar
  */
-router.get("/boar/:boarId", asyncHandler(VaccinesController.getVaccinesByBoarId.bind(VaccinesController)));
+router.get(
+  "/boar/:boarId",
+  asyncHandler(VaccinesController.getVaccinesByBoarId.bind(VaccinesController)),
+);
 
 export default router;

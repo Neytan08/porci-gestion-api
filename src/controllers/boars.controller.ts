@@ -1,15 +1,14 @@
-import { Request, Response } from "express";
-import BoarsService from "../services/boars.service";
-import logger from '../utils/logger';
-import ApiError from '../utils/apiError';
+import type { Request, Response } from "express";
 import { boarsSchema, boarsUpdateSchema } from "../schemas_validations/boars.schema";
+import BoarsService from "../services/boars.service";
+import ApiError from "../utils/apiError";
 import { GetAge } from "../utils/getAgeFromDate";
+import logger from "../utils/logger";
 
 class BoarsController {
-
   async getAll(_: Request, res: Response) {
     const boars = await BoarsService.getAll();
-    const boarsWithAge = boars.map(boar => {
+    const boarsWithAge = boars.map((boar) => {
       const birthDate = new Date(boar.birth_date);
       const { years, months } = GetAge.calculateAge(birthDate);
       return { ...boar, age: { years: years, months: months } };
