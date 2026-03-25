@@ -212,4 +212,9 @@ router.get(
   asyncHandler(matingEventsController.getAllGroupedByPregnancyResult.bind(matingEventsController)),
 );
 
+router.put(
+  "/update/pregnancy-result",
+  asyncHandler(matingEventsController.updatePregnancyResult.bind(matingEventsController)),
+);
+
 export default router;

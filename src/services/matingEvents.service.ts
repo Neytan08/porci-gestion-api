@@ -48,6 +48,7 @@ class MatingEventsService {
       orderBy: { pregnancy_result: "asc" },
       include: {
         breedingsows: { select: { sow_tag_number: true } },
+        boars: { select: { boar_tag_number: true } },
       },
     });
     // Group events by pregnancy_result
@@ -63,6 +64,13 @@ class MatingEventsService {
       pregnancy_result,
       events,
     }));
+  }
+
+  async updatePregnancyResult(matingIds: number[], pregnancyResult: string) {
+    return await prisma.matingevents.updateMany({
+      where: { mating_id: { in: matingIds } },
+      data: { pregnancy_result: pregnancyResult },
+    });
   }
 }
 

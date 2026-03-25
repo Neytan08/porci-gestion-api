@@ -86,6 +86,29 @@ class MatingEventsController {
     logger.info(`Grouped mating events by pregnancy result`);
     res.json(groupedEvents);
   }
+
+  async updatePregnancyResult(req: Request, res: Response) {
+    let { mating_ids, pregnancy_result } = req.body;
+    console.log("Received updatePregnancyResult request with body:", req.body);
+    console.log("Parsed matingIds:", mating_ids, "Parsed pregnancyResult:", pregnancy_result);
+    // This allows the endpoint to accept either a single ID or an array of IDs
+    if (!Array.isArray(mating_ids)) {
+      if (typeof mating_ids === "number") {
+        mating_ids = [mating_ids];
+      } else {
+        logger.warn("Validation error on update pregnancy result");
+        throw ApiError.badRequest("Validation error: mating_ids must be an array or a single number");
+      }
+    }
+
+    if (typeof pregnancy_result !== "string") {
+      logger.warn("Validation error on update pregnancy result");
+      throw ApiError.badRequest("Validation error: pregnancy_result must be a string");
+    }
+    const result = await MatingEventsService.updatePregnancyResult(mating_ids, pregnancy_result);
+    logger.info(`Updated pregnancy result for mating events with ids: ${mating_ids.join(", ")}`);
+    res.json(result);
+  }
 }
 
 export default new MatingEventsController();

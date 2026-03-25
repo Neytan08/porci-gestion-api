@@ -3,13 +3,13 @@ import prisma from "../prismaClient";
 class BoarsService {
   async getAll() {
     return await prisma.boars.findMany({
-      include: { breed: true },
+      include: { breeds: true },
     });
   }
   async getById(id: number) {
     return await prisma.boars.findUnique({
       where: { boar_id: id },
-      include: { breed: true },
+      include: { breeds: true },
     });
   }
   async create(data: any) {

@@ -43,7 +43,7 @@ model boars {
   removal_date    DateTime?      @db.Date
   removal_reason  String?
   description     String?
-  breed           breed          @relation(fields: [breed_id], references: [breed_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_breed")
+  breeds          breed          @relation(fields: [breed_id], references: [breed_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_breed")
   matingevents    matingevents[]
 }
 
