@@ -8,7 +8,7 @@ import logger from "../utils/logger";
 class BoarsController {
   async getAll(_: Request, res: Response) {
     const boars = await BoarsService.getAll();
-    const boarsWithAge = boars.map((boar) => {
+    const boarsWithAge = boars.map((boar: any) => {
       const birthDate = new Date(boar.birth_date);
       const { years, months } = GetAge.calculateAge(birthDate);
       return { ...boar, age: { years: years, months: months } };
