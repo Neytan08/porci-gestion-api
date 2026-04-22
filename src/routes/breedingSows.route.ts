@@ -189,7 +189,10 @@ router.delete("/:id", asyncHandler(BreedingSowController.delete.bind(BreedingSow
  *       404:
  *         description: No breeding sows found for this status
  */
-router.get("/status/:statusId", asyncHandler(BreedingSowController.getAllByStatusId.bind(BreedingSowController)));
+router.get(
+  "/status/:statusId",
+  asyncHandler(BreedingSowController.getAllByStatusId.bind(BreedingSowController)),
+);
 
 /**
  * @swagger
@@ -210,6 +213,6 @@ router.get("/status/:statusId", asyncHandler(BreedingSowController.getAllByStatu
  *       404:
  *         description: No farrowing records found for this sow
  */
-router.get("/:sowId/farrowings/count", asyncHandler(BreedingSowController.countFarrowingsBySow.bind(BreedingSowController)));
+// router.get("/:sowId/farrowings/count", asyncHandler(BreedingSowController.countFarrowingsBySow.bind(BreedingSowController)));
 
 export default router;

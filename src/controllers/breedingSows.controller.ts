@@ -1,8 +1,11 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
+import {
+  breedingSowsschema,
+  breedingSowsUpdateSchema,
+} from "../schemas_validations/breedingSows.schema";
 import BreedingSowsService from "../services/breedingSows.service";
-import logger from '../utils/logger';
-import ApiError from '../utils/apiError';
-import { breedingSowsschema, breedingSowsUpdateSchema } from "../schemas_validations/breedingSows.schema";
+import ApiError from "../utils/apiError";
+import logger from "../utils/logger";
 
 class BreedingSowsController {
   async getAll(_: Request, res: Response) {
@@ -67,12 +70,12 @@ class BreedingSowsController {
     res.json(sows);
   }
 
-  async countFarrowingsBySow(req: Request, res: Response) {
-    const sowId = Number(req.params.sowId);
-    const count = await BreedingSowsService.countFarrowingsBySow(sowId);
-    logger.info(`Sow id ${sowId} has ${count} farrowings`);
-    res.json({ sowId, farrowingCount: count });
-  }
+  // async countFarrowingsBySow(req: Request, res: Response) {
+  //   const sowId = Number(req.params.sowId);
+  //   const count = await BreedingSowsService.countFarrowingsBySow(sowId);
+  //   logger.info(`Sow id ${sowId} has ${count} farrowings`);
+  //   res.json({ sowId, farrowingCount: count });
+  // }
 }
 
 export default new BreedingSowsController();

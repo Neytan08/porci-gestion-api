@@ -13,7 +13,7 @@ const router = Router();
 
 /**
  * @swagger
- * /mating-events:
+ * /matingevents:
  *   get:
  *     summary: Get all mating events
  *     tags: [MatingEvents]
@@ -25,7 +25,7 @@ router.get("/", asyncHandler(matingEventsController.getAll.bind(matingEventsCont
 
 /**
  * @swagger
- * /mating-events/{id}:
+ * /matingevents/{id}:
  *   get:
  *     summary: Get a mating event by ID
  *     tags: [MatingEvents]
@@ -46,7 +46,7 @@ router.get("/:id", asyncHandler(matingEventsController.getById.bind(matingEvents
 
 /**
  * @swagger
- * /mating-events:
+ * /matingevents:
  *   post:
  *     summary: Create a new mating event
  *     tags: [MatingEvents]
@@ -59,10 +59,10 @@ router.get("/:id", asyncHandler(matingEventsController.getById.bind(matingEvents
  *             properties:
  *               sow_id:
  *                 type: integer
- *                 example: 1
+ *                 example: 5
  *               boar_id:
  *                 type: integer
- *                 example: 2
+ *                 example: 1
  *               insemination_date:
  *                 type: string
  *                 format: date
@@ -70,6 +70,9 @@ router.get("/:id", asyncHandler(matingEventsController.getById.bind(matingEvents
  *               insemination_type:
  *                 type: string
  *                 example: "Artificial"
+ *               pregnancy_result:
+ *                 type: string
+ *                 example: "Pendiente"
  *               notes:
  *                 type: string
  *                 example: "First insemination attempt of the season"
@@ -83,7 +86,7 @@ router.post("/", asyncHandler(matingEventsController.create.bind(matingEventsCon
 
 /**
  * @swagger
- * /mating-events/{id}:
+ * /matingevents/{id}:
  *   put:
  *     summary: Update an existing mating event
  *     tags: [MatingEvents]
@@ -103,10 +106,17 @@ router.post("/", asyncHandler(matingEventsController.create.bind(matingEventsCon
  *             properties:
  *               boar_id:
  *                 type: integer
- *                 example: 3
+ *                 example: 1
  *               insemination_type:
  *                 type: string
- *                 example: "Natural"
+ *                 example: "Artificial"
+ *               insemination_date:
+ *                 type: string
+ *                 format: date
+ *                 example: "2025-10-05"
+ *               pregnancy_result:
+ *                 type: string
+ *                 example: "Pendiente"
  *               notes:
  *                 type: string
  *                 example: "Updated notes after check"
@@ -120,7 +130,7 @@ router.put("/:id", asyncHandler(matingEventsController.update.bind(matingEventsC
 
 /**
  * @swagger
- * /mating-events/{id}:
+ * /matingevents/{id}:
  *   delete:
  *     summary: Delete a mating event by ID
  *     tags: [MatingEvents]
@@ -141,7 +151,7 @@ router.delete("/:id", asyncHandler(matingEventsController.delete.bind(matingEven
 
 /**
  * @swagger
- * /mating-events/sow/{sowId}:
+ * /matingevents/sow/{sowId}:
  *   get:
  *     summary: Get all mating events for a specific sow
  *     tags: [MatingEvents]
@@ -158,11 +168,14 @@ router.delete("/:id", asyncHandler(matingEventsController.delete.bind(matingEven
  *       404:
  *         description: No mating events found for this sow
  */
-router.get("/sow/:sowId", asyncHandler(matingEventsController.getAllMatingEventsBySow.bind(matingEventsController)));
+router.get(
+  "/sow/:sowId",
+  asyncHandler(matingEventsController.getAllMatingEventsBySow.bind(matingEventsController)),
+);
 
 /**
  * @swagger
- * /mating-events/boar/{boarId}:
+ * /matingevents/boar/{boarId}:
  *   get:
  *     summary: Get all mating events for a specific boar
  *     tags: [MatingEvents]
@@ -179,6 +192,29 @@ router.get("/sow/:sowId", asyncHandler(matingEventsController.getAllMatingEvents
  *       404:
  *         description: No mating events found for this boar
  */
-router.get("/boar/:boarId", asyncHandler(matingEventsController.getAllMatingEventsByBoar.bind(matingEventsController)));
+router.get(
+  "/boar/:boarId",
+  asyncHandler(matingEventsController.getAllMatingEventsByBoar.bind(matingEventsController)),
+);
+
+/**
+ * @swagger
+ * /matingevents/grouped/pregnancy-result:
+ *   get:
+ *     summary: Get all mating events grouped by pregnancy result
+ *     tags: [MatingEvents]
+ *     responses:
+ *       200:
+ *         description: List of mating events grouped by pregnancy result
+ */
+router.get(
+  "/grouped/pregnancy-result",
+  asyncHandler(matingEventsController.getAllGroupedByPregnancyResult.bind(matingEventsController)),
+);
+
+router.put(
+  "/update/pregnancy-result",
+  asyncHandler(matingEventsController.updatePregnancyResult.bind(matingEventsController)),
+);
 
 export default router;

@@ -3,14 +3,14 @@ import prisma from "../prismaClient";
 class BreedingSowsService {
   async getAll() {
     return await prisma.breedingsows.findMany({
-      include: { status: true, breeds: true},
+      include: { status: true, breeds: true },
     });
   }
 
   async getById(id: number) {
     return await prisma.breedingsows.findUnique({
       where: { sow_id: id },
-      include: { status: true, breeds: true},
+      include: { status: true, breeds: true },
     });
   }
 
@@ -34,17 +34,17 @@ class BreedingSowsService {
   }
 
   async getAllByStatusId(statusId: number) {
-  return await prisma.breedingsows.findMany({
-    where: { status_id: statusId },
-    // include: { status: true }, // optional, if you want to include status details
-  });
-  }
-
-  async countFarrowingsBySow(sowId: number) {
-    return await prisma.farrowings.count({
-      where: { sow_id: sowId },
+    return await prisma.breedingsows.findMany({
+      where: { status_id: statusId },
+      // include: { status: true }, // optional, if you want to include status details
     });
   }
+
+  // async countFarrowingsBySow(sowId: number) {
+  //   return await prisma.farrowings.count({
+  //     where: { sow_id: sowId },
+  //   });
+  // }
 }
 
 export default new BreedingSowsService();

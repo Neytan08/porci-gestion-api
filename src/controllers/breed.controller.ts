@@ -1,11 +1,10 @@
-import { Request, Response } from "express";
-import BreedService from "../services/breed.service";
-import logger from "../utils/logger";
-import ApiError from "../utils/apiError";
+import type { Request, Response } from "express";
 import { breedSchema, breedUpdateSchema } from "../schemas_validations/breeds.schema";
+import BreedService from "../services/breed.service";
+import ApiError from "../utils/apiError";
+import logger from "../utils/logger";
 
 class BreedController {
-
   async getAll(_: Request, res: Response) {
     const breeds = await BreedService.getAll();
     logger.info(`Found ${breeds.length} breeds`);
@@ -27,7 +26,9 @@ class BreedController {
     const parseResult = breedSchema.safeParse(req.body);
     if (!parseResult.success) {
       logger.warn("Validation on create breed");
-      throw ApiError.badRequest("Breed name is required" + JSON.stringify(parseResult.error.issues));
+      throw ApiError.badRequest(
+        "Breed name is required" + JSON.stringify(parseResult.error.issues),
+      );
     }
     logger.info(`Creating breed with name: ${parseResult.data}`);
     const newbreed = await BreedService.create(parseResult.data);

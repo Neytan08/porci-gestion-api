@@ -1,4 +1,4 @@
-import { Router } from "express";  
+import { Router } from "express";
 import VaccineTypesController from "../controllers/vaccineTypes.controller";
 import { asyncHandler } from "../middlewares/asyncHandler";
 

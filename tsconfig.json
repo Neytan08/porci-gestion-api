@@ -6,12 +6,12 @@
 
     // Environment Settings
     "target": "es2020",
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "module": "node16",
+    "moduleResolution": "node16",
     "esModuleInterop": true,
-    "types": ["node"],
+    // "types": ["node"],
     // For nodejs:
-    // "lib": ["esnext"],
+    "lib": ["esnext"],
     // "types": ["node"],
     // and npm install -D @types/node
 
@@ -39,6 +39,11 @@
     // "noUnusedParameters": true,
     "noUnusedLocals": true,
     "noImplicitReturns": true
+  },
+  "editor.defaultFormatter": "biomejs.biome",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

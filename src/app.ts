@@ -1,25 +1,23 @@
+import cors from "cors";
 import express from "express";
-import statusRoutes from "./routes/status.route";
-import breedRoutes from "./routes/breeds.route";
-import breedingSowRoutes from "./routes/breedingSows.route";
-import farrowingsRoutes from "./routes/farrowings.route";
+import helmet from "helmet";
+import { errorHandler } from "./middlewares/errorHandler";
 import boarsRoutes from "./routes/boars.route";
+import breedingSowRoutes from "./routes/breedingSows.route";
+import breedRoutes from "./routes/breeds.route";
 import matingEventsRoutes from "./routes/matingEvents.route";
-import notificationsRoutes from "./routes/notifications.route";
+import statusRoutes from "./routes/status.route";
 import vaccinesRoutes from "./routes/vaccines.route";
 import vaccineTypesRoutes from "./routes/vaccineTypes.route";
-import { errorHandler } from './middlewares/errorHandler';
-import logger from './utils/logger';
-import helmet from "helmet";
-import cors from "cors";
 import { setupSwagger } from "./swagger";
+import logger from "./utils/logger";
 
+// import farrowingsRoutes from "./routes/farrowings.route";
+// import notificationsRoutes from "./routes/notifications.route";
 const app = express();
 
 // Middlewares to enhance API security
 app.use(helmet());
-
-app.use(express.json());
 
 // Enable CORS for all routes
 app.use(cors());
@@ -38,21 +36,24 @@ app.get("/", (_, res) => {
   res.send("🚀 Bienvenido a la API de PorciGestion");
 });
 
+// Middleware to parse JSON bodies
+app.use(express.json());
 // Routes
 app.use("/api/status", statusRoutes);
-app.use("/api/breeds", breedRoutes)
+app.use("/api/breeds", breedRoutes);
 app.use("/api/breedingsows", breedingSowRoutes);
-app.use("/api/farrowings", farrowingsRoutes);
+// app.use("/api/farrowings", farrowingsRoutes);
 app.use("/api/boars", boarsRoutes);
 app.use("/api/matingevents", matingEventsRoutes);
-app.use("/api/notifications", notificationsRoutes);
+// app.use("/api/notifications", notificationsRoutes);
 app.use("/api/vaccines", vaccinesRoutes);
 app.use("/api/vaccinetypes", vaccineTypesRoutes);
 
+// Global error handling middleware (should be after all routes)
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
-const SWAGGER_PATH = process.env.SWAGGER_PATH || 'api-docs';
+const SWAGGER_PATH = process.env.SWAGGER_PATH || "api-docs";
 setupSwagger(app);
 
 app.listen(PORT, () => {
