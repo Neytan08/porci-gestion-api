@@ -3,15 +3,34 @@ import prisma from "../prismaClient";
 class BreedingSowsService {
   async getAll() {
     return await prisma.breedingsows.findMany({
-      include: { status: true, breeds: true },
+      include: { status: true, breed: true },
     });
   }
 
   async getById(id: number) {
     return await prisma.breedingsows.findUnique({
       where: { sow_id: id },
-      include: { status: true, breeds: true },
+      include: { status: true, breed: true },
     });
+  }
+
+  /**
+   * Checks whether a sow already exists with the provided tag number.
+   * The comparison normalizes both the stored value and the received value by
+   * removing spaces and ignoring letter casing.
+   * Returns `true` if a normalized match is found; otherwise, `false`.
+   */
+  async checkSowTagNumberExists(sowTagNumber: string): Promise<boolean> {
+    const normalizedSowTagNumber = sowTagNumber.replace(/\s+/g, "").toLowerCase();
+
+    const [result] = await prisma.$queryRaw<{ exists: boolean }[]>`
+      SELECT EXISTS (
+        SELECT 1
+        FROM breedingsows
+        WHERE regexp_replace(lower(sow_tag_number), '[[:space:]]+', '', 'g') = ${normalizedSowTagNumber}
+      ) AS "exists"
+    `;
+    return result?.exists ?? false;
   }
 
   async create(data: any) {

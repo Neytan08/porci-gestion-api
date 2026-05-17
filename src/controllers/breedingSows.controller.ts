@@ -25,11 +25,19 @@ class BreedingSowsController {
     return res.json(sow);
   }
 
+  async checkSowTagNumberExists(req: Request, res: Response) {
+    const { sowTagNumber } = req.params;
+    const exists = await BreedingSowsService.checkSowTagNumberExists(sowTagNumber);
+
+    logger.info(`Breeding sow tag ${sowTagNumber} exists: ${exists}`);
+    return res.json(exists);
+  }
+
   async create(req: Request, res: Response) {
     const parseResult = breedingSowsschema.safeParse(req.body);
     if (!parseResult.success) {
       logger.warn("Validation error on create breeding sow");
-      throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));
+      throw ApiError.badRequest(`Validation error: ${JSON.stringify(parseResult.error.issues)}`);
     }
     const newSow = await BreedingSowsService.create(parseResult.data);
     logger.info(`Breeding sow created: ${JSON.stringify(newSow)}`);
@@ -40,7 +48,7 @@ class BreedingSowsController {
     const parseResult = breedingSowsUpdateSchema.safeParse(req.body);
     if (!parseResult.success) {
       logger.warn("Validation error on update breeding sow");
-      throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));
+      throw ApiError.badRequest(`Validation error: ${JSON.stringify(parseResult.error.issues)}`);
     }
     const id = Number(req.params.id);
     const updatedSow = await BreedingSowsService.update(id, parseResult.data);

@@ -25,6 +25,28 @@ router.get("/", asyncHandler(BreedingSowController.getAll.bind(BreedingSowContro
 
 /**
  * @swagger
+ * /breedingsows/check-sow-tag-number-exists/{sowTagNumber}:
+ *   get:
+ *     summary: Check if a breeding sow tag number already exists
+ *     tags: [BreedingSows]
+ *     parameters:
+ *       - in: path
+ *         name: sowTagNumber
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Tag number to validate
+ *     responses:
+ *       200:
+ *         description: Boolean result indicating whether the tag exists
+ */
+router.get(
+  "/check-sow-tag-number-exists/:sowTagNumber",
+  asyncHandler(BreedingSowController.checkSowTagNumberExists.bind(BreedingSowController)),
+);
+
+/**
+ * @swagger
  * /breedingsows/{id}:
  *   get:
  *     summary: Get a breeding sow by ID

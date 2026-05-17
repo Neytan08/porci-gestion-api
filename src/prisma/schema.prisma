@@ -21,7 +21,7 @@ model breedingsows {
   removal_date      DateTime?      @db.Date
   removal_reason    String?
   description       String?
-  breeds            breed          @relation(fields: [breed_id], references: [breed_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_breed")
+  breed             breed          @relation(fields: [breed_id], references: [breed_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_breed")
   status            status         @relation(fields: [status_id], references: [status_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_status")
   matingevents      matingevents[]
 }
