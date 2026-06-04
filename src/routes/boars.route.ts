@@ -25,6 +25,28 @@ router.get("/", asyncHandler(BoarsController.getAll.bind(BoarsController)));
 
 /**
  * @swagger
+ * /boars/check-boar-tag-number-exists/{boarTagNumber}:
+ *   get:
+ *     summary: Check if a boar tag number already exists
+ *     tags: [Boars]
+ *     parameters:
+ *       - in: path
+ *         name: boarTagNumber
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Tag number to validate
+ *     responses:
+ *       200:
+ *         description: Boolean result indicating whether the tag exists
+ */
+router.get(
+  "/check-boar-tag-number-exists/:boarTagNumber",
+  asyncHandler(BoarsController.checkBoarTagNumberExists.bind(BoarsController)),
+);
+
+/**
+ * @swagger
  * /boars/{id}:
  *   get:
  *     summary: Get a boar by ID

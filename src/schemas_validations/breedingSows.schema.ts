@@ -4,7 +4,7 @@ import { z } from "zod";
 export const breedingSowsschema = z.object({
   status_id: z.number().int().positive(),
   breed_id: z.number().int().positive(),
-  sow_tag_number: z.string().min(1),
+  sow_tag_number: z.string().min(1).max(50),
   entry_date: z
     .string()
     .refine((date) => !isNaN(Date.parse(date)), { message: "Invalid entry_date format" }),

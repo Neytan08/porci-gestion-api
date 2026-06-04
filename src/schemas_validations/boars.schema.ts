@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // Boars schema validation using Zod
 export const boarsSchema = z.object({
-  boar_tag_number: z.string().min(1),
+  boar_tag_number: z.string().min(1).max(50),
   breed_id: z.number().int().positive(),
   weight: z.number().nullable().optional(),
   length: z.number().nullable().optional(),

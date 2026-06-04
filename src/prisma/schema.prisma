@@ -11,7 +11,7 @@ model breedingsows {
   sow_id            Int            @id @default(autoincrement())
   status_id         Int
   breed_id          Int
-  sow_tag_number    String         @unique @db.VarChar(50)
+  sow_tag_number    String         @unique @db.Citext
   entry_date        DateTime       @db.Date
   weight            Decimal?       @db.Decimal(5, 2)
   length            Decimal?       @db.Decimal(5, 2)
@@ -35,7 +35,7 @@ model status {
 model boars {
   boar_id         Int            @id @default(autoincrement())
   breed_id        Int
-  boar_tag_number String         @unique @db.VarChar(50)
+  boar_tag_number String         @unique @db.Citext
   weight          Decimal?       @db.Decimal(5, 2)
   length          Decimal?       @db.Decimal(5, 2)
   birth_date      DateTime       @db.Date

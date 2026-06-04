@@ -1,16 +1,17 @@
+import type { boars } from "@prisma/client";
 import type { Request, Response } from "express";
 import { boarsSchema, boarsUpdateSchema } from "../schemas_validations/boars.schema";
 import BoarsService from "../services/boars.service";
 import ApiError from "../utils/apiError";
-import { GetAge } from "../utils/getAgeFromDate";
+import { calculateAge } from "../utils/getAgeFromDate";
 import logger from "../utils/logger";
 
 class BoarsController {
   async getAll(_: Request, res: Response) {
     const boars = await BoarsService.getAll();
-    const boarsWithAge = boars.map((boar: any) => {
+    const boarsWithAge = boars.map((boar: boars) => {
       const birthDate = new Date(boar.birth_date);
-      const { years, months } = GetAge.calculateAge(birthDate);
+      const { years, months } = calculateAge(birthDate);
       return { ...boar, age: { years: years, months: months } };
     });
     logger.info(`Found ${boars.length} boars`);
@@ -25,7 +26,7 @@ class BoarsController {
       throw ApiError.notFound("Boar not found");
     }
     const birthDate = new Date(boar.birth_date);
-    const { years, months } = GetAge.calculateAge(birthDate);
+    const { years, months } = calculateAge(birthDate);
     logger.info(`Boar found: ${JSON.stringify(boar)}`);
     return res.json({ ...boar, age: { years: years, months: months } });
   }
@@ -34,7 +35,7 @@ class BoarsController {
     const parseResult = boarsSchema.safeParse(req.body);
     if (!parseResult.success) {
       logger.warn("Validation error on create boar");
-      throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));
+      throw ApiError.badRequest(`Validation error: ${JSON.stringify(parseResult.error.issues)}`);
     }
     const newBoar = await BoarsService.create(parseResult.data);
     logger.info(`Boar created: ${JSON.stringify(newBoar)}`);
@@ -45,7 +46,7 @@ class BoarsController {
     const parseResult = boarsUpdateSchema.safeParse(req.body);
     if (!parseResult.success) {
       logger.warn("Validation error on update boar");
-      throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));
+      throw ApiError.badRequest(`Validation error: ${JSON.stringify(parseResult.error.issues)}`);
     }
     const id = Number(req.params.id);
     const updatedBoar = await BoarsService.update(id, parseResult.data);
@@ -62,6 +63,14 @@ class BoarsController {
     }
     logger.info(`Boar with id ${id} deleted`);
     res.status(204).send();
+  }
+
+  async checkBoarTagNumberExists(req: Request, res: Response){
+    const { boarTagNumber } = req.params;
+    const exists = await BoarsService.checkBoarTagNumberExists(boarTagNumber);
+
+    logger.info(`Boar tag ${boarTagNumber} exists: ${exists}`);
+    res.json(exists);
   }
 }
 
