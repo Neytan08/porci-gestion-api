@@ -3,9 +3,28 @@ import {
   matingEventsSchema,
   matingEventUpdateSchema,
 } from "../schemas_validations/matingEvents.schema";
-import MatingEventsService from "../services/matingEvents.service";
+import MatingEventsService from "../services/matingEvents/matingEventsService";
 import ApiError from "../utils/apiError";
 import logger from "../utils/logger";
+
+/**
+ * Guards the endpoint against non-integer or non-positive ids before hitting the service layer.
+ */
+const isPositiveInteger = (value: unknown): value is number =>
+  typeof value === "number" && Number.isInteger(value) && value > 0;
+
+/**
+ * Normalizes a single id or an id list into the deduplicated batch format expected by the service.
+ */
+const parseMatingIds = (value: unknown) => {
+  const rawIds = Array.isArray(value) ? value : [value];
+
+  if (rawIds.length === 0 || !rawIds.every(isPositiveInteger)) {
+    return null;
+  }
+
+  return Array.from(new Set(rawIds));
+};
 
 class MatingEventsController {
   async getAll(_: Request, res: Response) {
@@ -29,7 +48,7 @@ class MatingEventsController {
     const parseResult = matingEventsSchema.safeParse(req.body);
     if (!parseResult.success) {
       logger.warn("Validation error on create mating event");
-      throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));
+      throw ApiError.badRequest(`Validation error: ${JSON.stringify(parseResult.error.issues)}`);
     }
     const newEvent = await MatingEventsService.create(parseResult.data);
     logger.info(`Mating event created: ${JSON.stringify(newEvent)}`);
@@ -40,7 +59,7 @@ class MatingEventsController {
     const parseResult = matingEventUpdateSchema.safeParse(req.body);
     if (!parseResult.success) {
       logger.warn("Validation error on update mating event");
-      throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));
+      throw ApiError.badRequest(`Validation error: ${JSON.stringify(parseResult.error.issues)}`);
     }
     const id = Number(req.params.id);
     const updatedEvent = await MatingEventsService.update(id, parseResult.data);
@@ -87,26 +106,30 @@ class MatingEventsController {
     res.json(groupedEvents);
   }
 
+  /**
+   * Accepts single or bulk pregnancy-result updates and forwards a normalized payload to the service.
+   */
   async updatePregnancyResult(req: Request, res: Response) {
-    let { mating_ids, pregnancy_result } = req.body;
-    console.log("Received updatePregnancyResult request with body:", req.body);
-    console.log("Parsed matingIds:", mating_ids, "Parsed pregnancyResult:", pregnancy_result);
-    // This allows the endpoint to accept either a single ID or an array of IDs
-    if (!Array.isArray(mating_ids)) {
-      if (typeof mating_ids === "number") {
-        mating_ids = [mating_ids];
-      } else {
-        logger.warn("Validation error on update pregnancy result");
-        throw ApiError.badRequest("Validation error: mating_ids must be an array or a single number");
-      }
+    const { mating_ids, pregnancy_result } = req.body ?? {};
+    const matingIds = parseMatingIds(mating_ids);
+
+    if (!matingIds) {
+      logger.warn("Validation error on update pregnancy result");
+      throw ApiError.badRequest(
+        "Validation error: mating_ids must be a positive integer or an array of positive integers",
+      );
     }
 
-    if (typeof pregnancy_result !== "string") {
+    if (typeof pregnancy_result !== "string" || pregnancy_result.trim().length === 0) {
       logger.warn("Validation error on update pregnancy result");
       throw ApiError.badRequest("Validation error: pregnancy_result must be a string");
     }
-    const result = await MatingEventsService.updatePregnancyResult(mating_ids, pregnancy_result);
-    logger.info(`Updated pregnancy result for mating events with ids: ${mating_ids.join(", ")}`);
+
+    const result = await MatingEventsService.updatePregnancyResult(
+      matingIds,
+      pregnancy_result.trim(),
+    );
+    logger.info(`Updated pregnancy result for mating events with ids: ${matingIds.join(", ")}`);
     res.json(result);
   }
 }
