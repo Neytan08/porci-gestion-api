@@ -25,7 +25,7 @@ const normalizeText = (value: string) =>
 /**
  * Checks whether the sow is still in the empty state required to register a mating event.
  */
-export const isEmptySowStatus = (statusName: string) => normalizeText(statusName) === "vacia";
+export const isEmptySowStatus = (statusName: string) => normalizeText(statusName) === normalizeText(SOW_STATUS_LABELS.vacia);
 
 /**
  * Maps user input to the canonical pregnancy result values supported by the API.
