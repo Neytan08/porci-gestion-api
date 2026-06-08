@@ -47,14 +47,14 @@ class BreedingSowsService {
 
   async getAll() {
     return await prisma.breedingsows.findMany({
-      include: { status: true, breed: true },
+      include: { breed: true },
     });
   }
 
   async getById(id: number) {
     return await prisma.breedingsows.findUnique({
       where: { sow_id: id },
-      include: { status: true, breed: true },
+      include: { breed: true },
     });
   }
 
@@ -96,10 +96,9 @@ class BreedingSowsService {
     });
   }
 
-  async getAllByStatusId(statusId: number) {
+  async getAllByStatus(status: string) {
     return await prisma.breedingsows.findMany({
-      where: { status_id: statusId },
-      // include: { status: true }, // optional, if you want to include status details
+      where: { status },
     });
   }
 

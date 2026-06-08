@@ -67,14 +67,14 @@ class BreedingSowsController {
     res.status(204).send();
   }
 
-  async getAllByStatusId(req: Request, res: Response) {
-    const statusId = Number(req.params.statusId);
-    const sows = await BreedingSowsService.getAllByStatusId(statusId);
+  async getAllByStatus(req: Request, res: Response) {
+    const { status } = req.params;
+    const sows = await BreedingSowsService.getAllByStatus(status);
     if (!sows) {
-      logger.warn(`No breeding sows found with status id ${statusId}`);
+      logger.warn(`No breeding sows found with status ${status}`);
       throw ApiError.notFound("No breeding sows found for the given status");
     }
-    logger.info(`Found ${sows.length} breeding sows with status id ${statusId}`);
+    logger.info(`Found ${sows.length} breeding sows with status ${status}`);
     res.json(sows);
   }
 

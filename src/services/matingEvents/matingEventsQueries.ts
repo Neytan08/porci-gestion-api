@@ -1,10 +1,9 @@
 import type { Prisma } from "@prisma/client";
 import prisma from "../../prismaClient";
-import type { SowStatusKey } from "./pregnancyRules";
 
 type MatingEventsQueryClient = Pick<
   Prisma.TransactionClient,
-  "breedingsows" | "matingevents" | "status"
+  "breedingsows" | "matingevents"
 >;
 
 export type PregnancyUpdateEvent = {
@@ -12,16 +11,6 @@ export type PregnancyUpdateEvent = {
   sow_id: number;
   pregnancy_result: string | null;
 };
-
-/**
- * Normalizes persisted labels so query-side status lookups stay accent-insensitive.
- */
-const normalizeText = (value: string) =>
-  value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
 
 /**
  * Returns the full mating-event collection without applying business rules.
@@ -39,12 +28,9 @@ export const getSowByIdWithStatus = async (
 ) => {
   return await queryClient.breedingsows.findUnique({
     where: { sow_id: sowId },
-    include: {
-      status: {
-        select: {
-          status_name: true,
-        },
-      },
+    select: {
+      sow_id: true,
+      status: true,
     },
   });
 };
@@ -99,25 +85,6 @@ export const getPregnancyUpdateEvents = async (
       pregnancy_result: true,
     },
   });
-};
-
-/**
- * Finds the persisted status id for a normalized sow status key without applying command-side errors.
- */
-export const findSowStatusIdByKey = async (
-  statusKey: SowStatusKey,
-  queryClient: MatingEventsQueryClient = prisma,
-) => {
-  const statuses = await queryClient.status.findMany({
-    select: {
-      status_id: true,
-      status_name: true,
-    },
-  });
-
-  const status = statuses.find(({ status_name }) => normalizeText(status_name) === statusKey);
-
-  return status?.status_id ?? null;
 };
 
 /**

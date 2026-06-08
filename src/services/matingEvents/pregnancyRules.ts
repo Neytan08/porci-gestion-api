@@ -5,8 +5,10 @@ export const PREGNANCY_RESULTS = {
 } as const;
 
 export const SOW_STATUS_LABELS = {
-  vacia: "Vacía",
-  gestacion: "Gestación",
+  vacia: "Vacia",
+  gestacion: "Gestacion",
+  lactancia: "Lactancia",
+  noProductiva: "No Productiva",
 } as const;
 
 export type PregnancyResult = (typeof PREGNANCY_RESULTS)[keyof typeof PREGNANCY_RESULTS];

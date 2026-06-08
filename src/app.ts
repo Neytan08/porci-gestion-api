@@ -6,7 +6,6 @@ import boarsRoutes from "./routes/boars.route";
 import breedingSowRoutes from "./routes/breedingSows.route";
 import breedRoutes from "./routes/breeds.route";
 import matingEventsRoutes from "./routes/matingEvents.route";
-import statusRoutes from "./routes/status.route";
 import vaccinesRoutes from "./routes/vaccines.route";
 import vaccineTypesRoutes from "./routes/vaccineTypes.route";
 import { setupSwagger } from "./swagger";
@@ -39,7 +38,6 @@ app.get("/", (_, res) => {
 // Middleware to parse JSON bodies
 app.use(express.json());
 // Routes
-app.use("/api/status", statusRoutes);
 app.use("/api/breeds", breedRoutes);
 app.use("/api/breedingsows", breedingSowRoutes);
 // app.use("/api/farrowings", farrowingsRoutes);

@@ -2,7 +2,6 @@ import type { Prisma } from "@prisma/client";
 import prisma from "../../prismaClient";
 import ApiError from "../../utils/apiError";
 import {
-  findSowStatusIdByKey,
   getPregnancyUpdateEvents,
   getSowByIdWithStatus,
   type PregnancyUpdateEvent,
@@ -102,10 +101,9 @@ const getCurrentPregnancyResultOrThrow = (events: PregnancyUpdateEvent[]) => {
 };
 
 /**
- * Resolves the target sow status id in the command layer, where query access and error handling belong.
+ * Resolves the target sow status value in the command layer based on a supported transition.
  */
-const resolveSowStatusTransitionId = async (
-  tx: Prisma.TransactionClient,
+const resolveSowStatusTransition = (
   currentPregnancyResult: PregnancyResult,
   nextPregnancyResult: PregnancyResult,
 ) => {
@@ -115,13 +113,7 @@ const resolveSowStatusTransitionId = async (
     return null;
   }
 
-  const nextStatusId = await findSowStatusIdByKey(nextStatusKey, tx);
-
-  if (!nextStatusId) {
-    throw ApiError.notFound(`Status '${SOW_STATUS_LABELS[nextStatusKey]}' not found`);
-  }
-
-  return nextStatusId;
+  return SOW_STATUS_LABELS[nextStatusKey];
 };
 
 /**
@@ -133,13 +125,12 @@ const updateAffectedSowStatuses = async (
   currentPregnancyResult: PregnancyResult,
   nextPregnancyResult: PregnancyResult,
 ) => {
-  const nextStatusId = await resolveSowStatusTransitionId(
-    tx,
+  const nextStatus = resolveSowStatusTransition(
     currentPregnancyResult,
     nextPregnancyResult,
   );
 
-  if (!nextStatusId) {
+  if (!nextStatus) {
     return;
   }
 
@@ -148,9 +139,9 @@ const updateAffectedSowStatuses = async (
   await tx.breedingsows.updateMany({
     where: {
       sow_id: { in: sowIds },
-      NOT: { status_id: nextStatusId },
+      NOT: { status: nextStatus },
     },
-    data: { status_id: nextStatusId },
+    data: { status: nextStatus },
   });
 };
 
@@ -165,7 +156,7 @@ export const createMatingEvent = async (data: Prisma.matingeventsUncheckedCreate
       throw ApiError.notFound("Sow not found");
     }
 
-    if (!isEmptySowStatus(sow.status.status_name)) {
+    if (!sow.status || !isEmptySowStatus(sow.status)) {
       throw ApiError.badRequest("Cannot create mating event: sow status must be 'vacia'");
     }
 
