@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import prisma from "../../prismaClient";
+import { PREGNANCY_RESULTS } from "./pregnancyRules";
 
 type MatingEventsQueryClient = Pick<
   Prisma.TransactionClient,
@@ -31,6 +32,31 @@ export const getSowByIdWithStatus = async (
     select: {
       sow_id: true,
       status: true,
+    },
+  });
+};
+
+/**
+ * Returns the latest active mating event for the sow when it is still pending or positive.
+ * This is used to prevent overlapping mating flows for the same sow.
+ */
+export const getBlockingMatingEventBySowId = async (
+  sowId: number,
+  queryClient: MatingEventsQueryClient = prisma,
+) => {
+  return await queryClient.matingevents.findFirst({
+    where: {
+      sow_id: sowId,
+      pregnancy_result: {
+        in: [PREGNANCY_RESULTS.pendiente, PREGNANCY_RESULTS.positivo],
+      },
+    },
+    select: {
+      mating_id: true,
+      pregnancy_result: true,
+    },
+    orderBy: {
+      mating_id: "desc",
     },
   });
 };

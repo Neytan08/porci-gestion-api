@@ -1,12 +1,15 @@
 import type { Prisma } from "@prisma/client";
+import type { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import prisma from "../../prismaClient";
-import ApiError from "../../utils/apiError";
 import {
+  getBlockingMatingEventBySowId,
   getPregnancyUpdateEvents,
   getSowByIdWithStatus,
   type PregnancyUpdateEvent,
 } from "./matingEventsQueries";
+import { matingEventErrors } from "./matingEventErrors";
 import {
+  getSowStatusAfterDeletingMatingEvent,
   isEmptySowStatus,
   isSupportedPregnancyResultTransition,
   parsePregnancyResult,
@@ -15,6 +18,20 @@ import {
   type PregnancyResult,
 } from "./pregnancyRules";
 
+const isPrismaRecordNotFoundError = (
+  error: unknown,
+): error is PrismaClientKnownRequestError => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const prismaError = error as PrismaClientKnownRequestError;
+
+  return (
+    prismaError.name === "PrismaClientKnownRequestError" && prismaError.code === "P2025"
+  );
+};
+
 /**
  * Normalizes the requested pregnancy result and fails fast when the input is outside the domain rules.
  */
@@ -22,9 +39,7 @@ const getNextPregnancyResultOrThrow = (pregnancyResult: string) => {
   const nextPregnancyResult = parsePregnancyResult(pregnancyResult);
 
   if (!nextPregnancyResult) {
-    throw ApiError.badRequest(
-      "Validation error: pregnancy_result must be 'Pendiente', 'Positivo' or 'Negativo'",
-    );
+    throw matingEventErrors.invalidPregnancyResult(pregnancyResult);
   }
 
   return nextPregnancyResult;
@@ -37,7 +52,7 @@ const getUniqueMatingIdsOrThrow = (matingIds: number[]) => {
   const uniqueMatingIds = Array.from(new Set(matingIds));
 
   if (uniqueMatingIds.length === 0) {
-    throw ApiError.badRequest("Validation error: mating_ids must not be empty");
+    throw matingEventErrors.invalidMatingIds(matingIds);
   }
 
   return uniqueMatingIds;
@@ -55,7 +70,7 @@ const loadPregnancyUpdateEvents = async (
   if (events.length !== matingIds.length) {
     const foundIds = new Set(events.map(({ mating_id }) => mating_id));
     const missingIds = matingIds.filter((matingId) => !foundIds.has(matingId));
-    throw ApiError.notFound(`Mating events not found for ids: ${missingIds.join(", ")}`);
+    throw matingEventErrors.matingEventsNotFound(matingIds, missingIds);
   }
 
   return events;
@@ -69,16 +84,15 @@ const getCurrentPregnancyResultOrThrow = (events: PregnancyUpdateEvent[]) => {
 
   for (const event of events) {
     if (!event.pregnancy_result) {
-      throw ApiError.badRequest(
-        `Mating event with id ${event.mating_id} has no pregnancy result assigned`,
-      );
+      throw matingEventErrors.pregnancyResultMissing(event.mating_id);
     }
 
     const currentPregnancyResult = parsePregnancyResult(event.pregnancy_result);
 
     if (!currentPregnancyResult) {
-      throw ApiError.badRequest(
-        `Mating event with id ${event.mating_id} has an unsupported pregnancy result`,
+      throw matingEventErrors.unsupportedStoredPregnancyResult(
+        event.mating_id,
+        event.pregnancy_result,
       );
     }
 
@@ -86,15 +100,16 @@ const getCurrentPregnancyResultOrThrow = (events: PregnancyUpdateEvent[]) => {
   }
 
   if (currentPregnancyResults.size > 1) {
-    throw ApiError.badRequest(
-      "Validation error: all mating events in the same update must share the same current pregnancy result",
+    throw matingEventErrors.mixedCurrentPregnancyResults(
+      events.map(({ mating_id }) => mating_id),
+      Array.from(new Set(events.map(({ pregnancy_result }) => pregnancy_result ?? "Unknown"))),
     );
   }
 
   const [currentPregnancyResult] = Array.from(currentPregnancyResults);
 
   if (!currentPregnancyResult) {
-    throw ApiError.badRequest("Validation error: no mating events found to update");
+    throw matingEventErrors.noMatingEventsToUpdate();
   }
 
   return currentPregnancyResult;
@@ -114,6 +129,26 @@ const resolveSowStatusTransition = (
   }
 
   return SOW_STATUS_LABELS[nextStatusKey];
+};
+
+/**
+ * Restores the sow to the empty state only when the deleted mating event had a positive pregnancy result.
+ */
+const restoreSowStatusAfterDeletingPositiveEvent = async (
+  tx: Prisma.TransactionClient,
+  sowId: number,
+  pregnancyResult: string | null,
+) => {
+  const nextStatusKey = getSowStatusAfterDeletingMatingEvent(pregnancyResult);
+
+  if (!nextStatusKey) {
+    return;
+  }
+
+  await tx.breedingsows.update({
+    where: { sow_id: sowId },
+    data: { status: SOW_STATUS_LABELS[nextStatusKey] },
+  });
 };
 
 /**
@@ -146,18 +181,44 @@ const updateAffectedSowStatuses = async (
 };
 
 /**
- * Creates a mating event while preserving the sow status until a pregnancy-result transition requires a change.
+ * Prevents creating a new mating event while the sow still has an active
+ * pending or positive mating flow already registered.
+ */
+const ensureSowHasNoBlockingMatingEventOrThrow = async (
+  tx: Prisma.TransactionClient,
+  sowId: number,
+) => {
+  const blockingEvent = await getBlockingMatingEventBySowId(sowId, tx);
+
+  if (!blockingEvent) {
+    return;
+  }
+
+  throw matingEventErrors.sowHasActiveMatingEvent(
+    sowId,
+    blockingEvent.mating_id,
+    blockingEvent.pregnancy_result,
+  );
+};
+
+/**
+ * Creates a mating event only when the sow is empty and does not already have
+ * another active mating event in pending or positive status.
  */
 export const createMatingEvent = async (data: Prisma.matingeventsUncheckedCreateInput) => {
   return await prisma.$transaction(async (tx) => {
     const sow = await getSowByIdWithStatus(data.sow_id, tx);
 
     if (!sow) {
-      throw ApiError.notFound("Sow not found");
+      throw matingEventErrors.sowNotFound(data.sow_id);
     }
 
+    // This explicit conflict check returns the business error requested by the API
+    // instead of falling back to the generic sow-status validation below.
+    await ensureSowHasNoBlockingMatingEventOrThrow(tx, data.sow_id);
+
     if (!sow.status || !isEmptySowStatus(sow.status)) {
-      throw ApiError.badRequest("Cannot create mating event: sow status must be 'vacia'");
+      throw matingEventErrors.sowNotEmpty(data.sow_id, sow.status);
     }
 
     return await tx.matingevents.create({
@@ -170,19 +231,50 @@ export const createMatingEvent = async (data: Prisma.matingeventsUncheckedCreate
  * Persists direct field changes on an existing mating event.
  */
 export const updateMatingEvent = async (id: number, data: Prisma.matingeventsUpdateInput) => {
-  return await prisma.matingevents.update({
-    where: { mating_id: id },
-    data,
-  });
+  try {
+    return await prisma.matingevents.update({
+      where: { mating_id: id },
+      data,
+    });
+  } catch (error) {
+    if (isPrismaRecordNotFoundError(error)) {
+      throw matingEventErrors.matingEventNotFound(id, "update");
+    }
+
+    throw error;
+  }
 };
 
 /**
  * Removes one mating event by id.
  */
 export const deleteMatingEvent = async (id: number) => {
-  return await prisma.matingevents.delete({
-    where: { mating_id: id },
-  });
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const deletedEvent = await tx.matingevents.delete({
+        where: { mating_id: id },
+        select: {
+          mating_id: true,
+          sow_id: true,
+          pregnancy_result: true,
+        },
+      });
+
+      await restoreSowStatusAfterDeletingPositiveEvent(
+        tx,
+        deletedEvent.sow_id,
+        deletedEvent.pregnancy_result,
+      );
+
+      return deletedEvent;
+    });
+  } catch (error) {
+    if (isPrismaRecordNotFoundError(error)) {
+      throw matingEventErrors.matingEventNotFound(id, "delete");
+    }
+
+    throw error;
+  }
 };
 
 /**
@@ -197,8 +289,10 @@ export const updatePregnancyResult = async (matingIds: number[], pregnancyResult
     const currentPregnancyResult = getCurrentPregnancyResultOrThrow(events);
 
     if (!isSupportedPregnancyResultTransition(currentPregnancyResult, nextPregnancyResult)) {
-      throw ApiError.badRequest(
-        `Unsupported pregnancy result transition: '${currentPregnancyResult}' -> '${nextPregnancyResult}'`,
+      throw matingEventErrors.pregnancyResultTransitionNotAllowed(
+        currentPregnancyResult,
+        nextPregnancyResult,
+        uniqueMatingIds,
       );
     }
 

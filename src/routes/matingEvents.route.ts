@@ -6,6 +6,24 @@ const router = Router();
 
 /**
  * @swagger
+ * components:
+ *   schemas:
+ *     ApiErrorResponse:
+ *       type: object
+ *       properties:
+ *         status:
+ *           type: integer
+ *           example: 409
+ *         errorCode:
+ *           type: string
+ *           example: SOW_NOT_EMPTY
+ *         message:
+ *           type: string
+ *           example: The sow must be in empty status before creating a mating event.
+ */
+
+/**
+ * @swagger
  * tags:
  *   name: MatingEvents
  *   description: Operations related to mating events of sows and boars
@@ -41,6 +59,10 @@ router.get("/", asyncHandler(matingEventsController.getAll.bind(matingEventsCont
  *         description: Mating event found
  *       404:
  *         description: Mating event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  */
 router.get("/:id", asyncHandler(matingEventsController.getById.bind(matingEventsController)));
 
@@ -81,6 +103,16 @@ router.get("/:id", asyncHandler(matingEventsController.getById.bind(matingEvents
  *         description: Mating event created successfully
  *       400:
  *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiErrorResponse'
+ *       409:
+ *         description: The sow is not eligible for creating a mating event
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  */
 router.post("/", asyncHandler(matingEventsController.create.bind(matingEventsController)));
 
@@ -123,8 +155,18 @@ router.post("/", asyncHandler(matingEventsController.create.bind(matingEventsCon
  *     responses:
  *       200:
  *         description: Mating event updated successfully
+ *       400:
+ *         description: Invalid update payload or invalid identifier
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  *       404:
  *         description: Mating event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  */
 router.put("/:id", asyncHandler(matingEventsController.update.bind(matingEventsController)));
 
@@ -146,6 +188,10 @@ router.put("/:id", asyncHandler(matingEventsController.update.bind(matingEventsC
  *         description: Mating event deleted successfully
  *       404:
  *         description: Mating event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  */
 router.delete("/:id", asyncHandler(matingEventsController.delete.bind(matingEventsController)));
 
@@ -164,9 +210,13 @@ router.delete("/:id", asyncHandler(matingEventsController.delete.bind(matingEven
  *         description: ID of the sow
  *     responses:
  *       200:
- *         description: List of mating events for the sow
- *       404:
- *         description: No mating events found for this sow
+ *         description: List of mating events for the sow. Returns an empty array when no records exist.
+ *       400:
+ *         description: Invalid sow id
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  */
 router.get(
   "/sow/:sowId",
@@ -188,9 +238,13 @@ router.get(
  *         description: ID of the boar
  *     responses:
  *       200:
- *         description: List of mating events for the boar
- *       404:
- *         description: No mating events found for this boar
+ *         description: List of mating events for the boar. Returns an empty array when no records exist.
+ *       400:
+ *         description: Invalid boar id
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  */
 router.get(
   "/boar/:boarId",
@@ -212,6 +266,51 @@ router.get(
   asyncHandler(matingEventsController.getAllGroupedByPregnancyResult.bind(matingEventsController)),
 );
 
+/**
+ * @swagger
+ * /matingevents/update/pregnancy-result:
+ *   put:
+ *     summary: Update the pregnancy result for one or many mating events
+ *     tags: [MatingEvents]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               mating_ids:
+ *                 oneOf:
+ *                   - type: integer
+ *                   - type: array
+ *                     items:
+ *                       type: integer
+ *                 example: [1, 2]
+ *               pregnancy_result:
+ *                 type: string
+ *                 example: Positivo
+ *     responses:
+ *       200:
+ *         description: Pregnancy result updated successfully
+ *       400:
+ *         description: Invalid payload
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiErrorResponse'
+ *       404:
+ *         description: One or more mating events were not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiErrorResponse'
+ *       409:
+ *         description: Business rule conflict while updating the pregnancy result
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiErrorResponse'
+ */
 router.put(
   "/update/pregnancy-result",
   asyncHandler(matingEventsController.updatePregnancyResult.bind(matingEventsController)),

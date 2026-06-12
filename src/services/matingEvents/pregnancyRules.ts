@@ -90,3 +90,23 @@ export const getSowStatusTransition = (
 
   return null;
 };
+
+/**
+ * Returns the sow status key that must be restored when deleting a mating event.
+ * Only a positive pregnancy result reopens the sow for a new mating registration.
+ */
+export const getSowStatusAfterDeletingMatingEvent = (
+  pregnancyResult: string | null,
+): SowStatusKey | null => {
+  if (!pregnancyResult) {
+    return null;
+  }
+
+  const normalizedPregnancyResult = parsePregnancyResult(pregnancyResult);
+
+  if (normalizedPregnancyResult === PREGNANCY_RESULTS.positivo) {
+    return "vacia";
+  }
+
+  return null;
+};

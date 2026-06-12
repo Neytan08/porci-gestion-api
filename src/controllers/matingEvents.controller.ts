@@ -3,8 +3,8 @@ import {
   matingEventsSchema,
   matingEventUpdateSchema,
 } from "../schemas_validations/matingEvents.schema";
+import { matingEventErrors } from "../services/matingEvents/matingEventErrors";
 import MatingEventsService from "../services/matingEvents/matingEventsService";
-import ApiError from "../utils/apiError";
 import logger from "../utils/logger";
 
 /**
@@ -12,6 +12,19 @@ import logger from "../utils/logger";
  */
 const isPositiveInteger = (value: unknown): value is number =>
   typeof value === "number" && Number.isInteger(value) && value > 0;
+
+const parsePositiveIdOrThrow = (
+  value: unknown,
+  buildError: (rawValue: unknown) => Error,
+) => {
+  const parsedValue = Number(value);
+
+  if (!isPositiveInteger(parsedValue)) {
+    throw buildError(value);
+  }
+
+  return parsedValue;
+};
 
 /**
  * Normalizes a single id or an id list into the deduplicated batch format expected by the service.
@@ -29,80 +42,100 @@ const parseMatingIds = (value: unknown) => {
 class MatingEventsController {
   async getAll(_: Request, res: Response) {
     const events = await MatingEventsService.getAll();
-    logger.info(`Found ${events.length} mating events`);
+    logger.info("Fetched mating events", { count: events.length });
     res.json(events);
   }
 
   async getById(req: Request, res: Response) {
-    const id = Number(req.params.id);
+    const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
+      matingEventErrors.invalidMatingEventId(rawValue, "retrieve"),
+    );
     const event = await MatingEventsService.getById(id);
+
     if (!event) {
-      logger.warn(`Mating event with id ${id} not found`);
-      throw ApiError.notFound("Mating event not found");
+      throw matingEventErrors.matingEventNotFound(id, "retrieve");
     }
-    logger.info(`Mating event found: ${JSON.stringify(event)}`);
+
+    logger.info("Fetched mating event", { matingEventId: id });
     return res.json(event);
   }
 
   async create(req: Request, res: Response) {
     const parseResult = matingEventsSchema.safeParse(req.body);
+
     if (!parseResult.success) {
-      logger.warn("Validation error on create mating event");
-      throw ApiError.badRequest(`Validation error: ${JSON.stringify(parseResult.error.issues)}`);
+      throw matingEventErrors.invalidCreatePayload(parseResult.error.issues);
     }
+
     const newEvent = await MatingEventsService.create(parseResult.data);
-    logger.info(`Mating event created: ${JSON.stringify(newEvent)}`);
+
+    logger.info("Created mating event", {
+      matingEventId: newEvent.mating_id,
+      sowId: newEvent.sow_id,
+      boarId: newEvent.boar_id ?? null,
+    });
+
     res.status(201).json(newEvent);
   }
 
   async update(req: Request, res: Response) {
     const parseResult = matingEventUpdateSchema.safeParse(req.body);
+
     if (!parseResult.success) {
-      logger.warn("Validation error on update mating event");
-      throw ApiError.badRequest(`Validation error: ${JSON.stringify(parseResult.error.issues)}`);
+      throw matingEventErrors.invalidUpdatePayload(parseResult.error.issues);
     }
-    const id = Number(req.params.id);
+
+    const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
+      matingEventErrors.invalidMatingEventId(rawValue, "update"),
+    );
     const updatedEvent = await MatingEventsService.update(id, parseResult.data);
-    logger.info(`Mating event updated: ${JSON.stringify(updatedEvent)}`);
+
+    logger.info("Updated mating event", {
+      matingEventId: updatedEvent.mating_id,
+      sowId: updatedEvent.sow_id,
+      boarId: updatedEvent.boar_id ?? null,
+    });
+
     res.json(updatedEvent);
   }
 
   async delete(req: Request, res: Response) {
-    const id = Number(req.params.id);
+    const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
+      matingEventErrors.invalidMatingEventId(rawValue, "delete"),
+    );
     const deleted = await MatingEventsService.delete(id);
-    if (!deleted) {
-      logger.warn(`Mating event with id ${id} not found for delete`);
-      throw ApiError.notFound(`Mating event with id ${id} not found`);
-    }
-    logger.info(`Mating event with id ${id} deleted`);
+
+    logger.info("Deleted mating event", {
+      matingEventId: deleted.mating_id,
+      sowId: deleted.sow_id,
+    });
+
     res.status(204).send();
   }
 
   async getAllMatingEventsBySow(req: Request, res: Response) {
-    const sowId = Number(req.params.sowId);
+    const sowId = parsePositiveIdOrThrow(req.params.sowId, matingEventErrors.invalidSowId);
     const events = await MatingEventsService.getAllMatingEventsBySow(sowId);
-    if (!events) {
-      logger.warn(`No mating events found for sow id ${sowId}`);
-      throw ApiError.notFound("No mating events found for the given sow");
-    }
-    logger.info(`Found ${events.length} mating events for sow id ${sowId}`);
+
+    logger.info("Fetched mating events by sow", { sowId, count: events.length });
     res.json(events);
   }
 
   async getAllMatingEventsByBoar(req: Request, res: Response) {
-    const boarId = Number(req.params.boarId);
+    const boarId = parsePositiveIdOrThrow(req.params.boarId, matingEventErrors.invalidBoarId);
     const events = await MatingEventsService.getAllMatingEventsByBoar(boarId);
-    if (!events) {
-      logger.warn(`No mating events found for boar id ${boarId}`);
-      throw ApiError.notFound("No mating events found for the given boar");
-    }
-    logger.info(`Found ${events.length} mating events for boar id ${boarId}`);
+
+    logger.info("Fetched mating events by boar", { boarId, count: events.length });
     res.json(events);
   }
 
   async getAllGroupedByPregnancyResult(_: Request, res: Response) {
     const groupedEvents = await MatingEventsService.getAllGroupedByPregnancyResult();
-    logger.info(`Grouped mating events by pregnancy result`);
+
+    logger.info("Grouped mating events by pregnancy result", {
+      groups: groupedEvents.length,
+    });
+
     res.json(groupedEvents);
   }
 
@@ -114,22 +147,26 @@ class MatingEventsController {
     const matingIds = parseMatingIds(mating_ids);
 
     if (!matingIds) {
-      logger.warn("Validation error on update pregnancy result");
-      throw ApiError.badRequest(
-        "Validation error: mating_ids must be a positive integer or an array of positive integers",
-      );
+      throw matingEventErrors.invalidMatingIds(mating_ids);
     }
 
     if (typeof pregnancy_result !== "string" || pregnancy_result.trim().length === 0) {
-      logger.warn("Validation error on update pregnancy result");
-      throw ApiError.badRequest("Validation error: pregnancy_result must be a string");
+      throw matingEventErrors.invalidPregnancyResult(pregnancy_result);
     }
+
+    const normalizedPregnancyResult = pregnancy_result.trim();
 
     const result = await MatingEventsService.updatePregnancyResult(
       matingIds,
-      pregnancy_result.trim(),
+      normalizedPregnancyResult,
     );
-    logger.info(`Updated pregnancy result for mating events with ids: ${matingIds.join(", ")}`);
+
+    logger.info("Updated mating event pregnancy result", {
+      matingIds,
+      pregnancyResult: normalizedPregnancyResult,
+      updatedCount: result.count,
+    });
+
     res.json(result);
   }
 }
