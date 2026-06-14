@@ -3,78 +3,108 @@ import {
   breedingSowsschema,
   breedingSowsUpdateSchema,
 } from "../schemas_validations/breedingSows.schema";
-import BreedingSowsService from "../services/breedingSows.service";
-import ApiError from "../utils/apiError";
+import { breedingSowErrors } from "../services/breedingSows/breedingSowErrors";
+import { parseBreedingSowStatus } from "../services/breedingSows/breedingSowsRules";
+import BreedingSowsService from "../services/breedingSows/breedingSowsService";
 import logger from "../utils/logger";
+import { parsePositiveIdOrThrow, parseRequiredStringParamOrThrow } from "../utils/requestParsing";
 
 class BreedingSowsController {
   async getAll(_: Request, res: Response) {
     const sows = await BreedingSowsService.getAll();
-    logger.info(`Found ${sows.length} breeding sows`);
+    logger.info("Fetched breeding sows", { count: sows.length });
     res.json(sows);
   }
 
   async getById(req: Request, res: Response) {
-    const id = Number(req.params.id);
+    const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
+      breedingSowErrors.invalidBreedingSowId(rawValue, "retrieve"),
+    );
     const sow = await BreedingSowsService.getById(id);
+
     if (!sow) {
-      logger.warn(`Breeding sow with id ${id} not found`);
-      throw ApiError.notFound("Breeding sow not found");
+      throw breedingSowErrors.breedingSowNotFound(id, "retrieve");
     }
-    logger.info(`Breeding sow found: ${JSON.stringify(sow)}`);
+
+    logger.info("Fetched breeding sow", { sowId: id });
     return res.json(sow);
   }
 
   async checkSowTagNumberExists(req: Request, res: Response) {
-    const { sowTagNumber } = req.params;
+    const sowTagNumber = parseRequiredStringParamOrThrow(
+      req.params.sowTagNumber,
+      breedingSowErrors.invalidSowTagNumber,
+    );
     const exists = await BreedingSowsService.checkSowTagNumberExists(sowTagNumber);
 
-    logger.info(`Breeding sow tag ${sowTagNumber} exists: ${exists}`);
+    logger.info("Checked breeding sow tag number", { sowTagNumber, exists });
     return res.json(exists);
   }
 
   async create(req: Request, res: Response) {
     const parseResult = breedingSowsschema.safeParse(req.body);
+
     if (!parseResult.success) {
-      logger.warn("Validation error on create breeding sow");
-      throw ApiError.badRequest(`Validation error: ${JSON.stringify(parseResult.error.issues)}`);
+      throw breedingSowErrors.invalidCreatePayload(parseResult.error.issues);
     }
+
     const newSow = await BreedingSowsService.create(parseResult.data);
-    logger.info(`Breeding sow created: ${JSON.stringify(newSow)}`);
+    logger.info("Created breeding sow", {
+      sowId: newSow.sow_id,
+      sowTagNumber: newSow.sow_tag_number,
+      breedId: newSow.breed_id,
+      status: newSow.status,
+    });
     res.status(201).json(newSow);
   }
 
   async update(req: Request, res: Response) {
     const parseResult = breedingSowsUpdateSchema.safeParse(req.body);
+
     if (!parseResult.success) {
-      logger.warn("Validation error on update breeding sow");
-      throw ApiError.badRequest(`Validation error: ${JSON.stringify(parseResult.error.issues)}`);
+      throw breedingSowErrors.invalidUpdatePayload(parseResult.error.issues);
     }
-    const id = Number(req.params.id);
+
+    const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
+      breedingSowErrors.invalidBreedingSowId(rawValue, "update"),
+    );
     const updatedSow = await BreedingSowsService.update(id, parseResult.data);
-    logger.info(`Breeding sow updated: ${JSON.stringify(updatedSow)}`);
+    logger.info("Updated breeding sow", {
+      sowId: updatedSow.sow_id,
+      sowTagNumber: updatedSow.sow_tag_number,
+      breedId: updatedSow.breed_id,
+      status: updatedSow.status,
+    });
     res.json(updatedSow);
   }
 
   async delete(req: Request, res: Response) {
-    const id = Number(req.params.id);
+    const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
+      breedingSowErrors.invalidBreedingSowId(rawValue, "delete"),
+    );
     const deleted = await BreedingSowsService.delete(id);
-    if (!deleted) {
-      logger.warn(`Breeding sow with id ${id} not found for delete`);
-      throw ApiError.notFound(`Breeding sow with id ${id} not found`);
-    }
-    logger.info(`Breeding sow with id ${id} deleted`);
+
+    logger.info("Deleted breeding sow", {
+      sowId: deleted.sow_id,
+      sowTagNumber: deleted.sow_tag_number,
+    });
     res.status(204).send();
   }
 
   async getAllByStatus(req: Request, res: Response) {
-    const { status } = req.params;
-    const sows = await BreedingSowsService.getAllByStatus(status);
-    if (!sows) {
-      logger.warn(`No breeding sows found with status ${status}`);
-      throw ApiError.notFound("No breeding sows found for the given status");
+    const rawStatus = parseRequiredStringParamOrThrow(
+      req.params.status,
+      breedingSowErrors.invalidStatus,
+    );
+    const status = parseBreedingSowStatus(rawStatus);
+
+    if (!status) {
+      throw breedingSowErrors.invalidStatus(rawStatus);
     }
-    logger.info(`Found ${sows.length} breeding sows with status ${status}`);
+
+    const sows = await BreedingSowsService.getAllByStatus(status);
+
+    logger.info("Fetched breeding sows by status", { status, count: sows.length });
     res.json(sows);
   }
 

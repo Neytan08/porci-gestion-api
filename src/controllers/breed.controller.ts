@@ -1,60 +1,74 @@
 import type { Request, Response } from "express";
 import { breedSchema, breedUpdateSchema } from "../schemas_validations/breeds.schema";
-import BreedService from "../services/breed.service";
-import ApiError from "../utils/apiError";
+import { breedErrors } from "../services/breeds/breedErrors";
+import BreedService from "../services/breeds/breedService";
 import logger from "../utils/logger";
+import { parsePositiveIdOrThrow } from "../utils/requestParsing";
 
 class BreedController {
   async getAll(_: Request, res: Response) {
     const breeds = await BreedService.getAll();
-    logger.info(`Found ${breeds.length} breeds`);
+    logger.info("Fetched breeds", { count: breeds.length });
     res.json(breeds);
   }
 
   async getById(req: Request, res: Response) {
-    const id = Number(req.params.id);
+    const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
+      breedErrors.invalidBreedId(rawValue, "retrieve"),
+    );
     const breed = await BreedService.getById(id);
+
     if (!breed) {
-      logger.warn(`Breed with id ${id} not found`);
-      throw ApiError.notFound("Breed not found");
+      throw breedErrors.breedNotFound(id, "retrieve");
     }
-    logger.info(`breed found: ${JSON.stringify(breed)}`);
+
+    logger.info("Fetched breed", { breedId: id });
     res.json(breed);
   }
 
   async create(req: Request, res: Response) {
     const parseResult = breedSchema.safeParse(req.body);
+
     if (!parseResult.success) {
-      logger.warn("Validation on create breed");
-      throw ApiError.badRequest(
-        "Breed name is required" + JSON.stringify(parseResult.error.issues),
-      );
+      throw breedErrors.invalidCreatePayload(parseResult.error.issues);
     }
-    logger.info(`Creating breed with name: ${parseResult.data}`);
-    const newbreed = await BreedService.create(parseResult.data);
-    res.status(201).json(newbreed);
+
+    const newBreed = await BreedService.create(parseResult.data);
+    logger.info("Created breed", {
+      breedId: newBreed.breed_id,
+      breedName: newBreed.breed_name,
+    });
+    res.status(201).json(newBreed);
   }
 
   async update(req: Request, res: Response) {
     const parseResult = breedUpdateSchema.safeParse(req.body);
+
     if (!parseResult.success) {
-      logger.warn("Validation error on update breed");
-      throw ApiError.badRequest("Validation error: " + JSON.stringify(parseResult.error.issues));
+      throw breedErrors.invalidUpdatePayload(parseResult.error.issues);
     }
-    const id = Number(req.params.id);
+
+    const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
+      breedErrors.invalidBreedId(rawValue, "update"),
+    );
     const updated = await BreedService.update(id, parseResult.data);
-    logger.info(`Breed updated: ${JSON.stringify(updated)}`);
+    logger.info("Updated breed", {
+      breedId: updated.breed_id,
+      breedName: updated.breed_name,
+    });
     res.json(updated);
   }
 
   async delete(req: Request, res: Response) {
-    const id = Number(req.params.id);
+    const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
+      breedErrors.invalidBreedId(rawValue, "delete"),
+    );
     const deleted = await BreedService.delete(id);
-    if (!deleted) {
-      logger.warn(`Breed with id ${id} not found for delete`);
-      throw ApiError.notFound(`Breed with id ${id} not found`);
-    }
-    logger.info(`Breed with id ${id} deleted`);
+
+    logger.info("Deleted breed", {
+      breedId: deleted.breed_id,
+      breedName: deleted.breed_name,
+    });
     res.status(204).send();
   }
 }
