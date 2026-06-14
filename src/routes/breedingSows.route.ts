@@ -25,6 +25,28 @@ router.get("/", asyncHandler(BreedingSowController.getAll.bind(BreedingSowContro
 
 /**
  * @swagger
+ * /breedingsows/check-sow-tag-number-exists/{sowTagNumber}:
+ *   get:
+ *     summary: Check if a breeding sow tag number already exists
+ *     tags: [BreedingSows]
+ *     parameters:
+ *       - in: path
+ *         name: sowTagNumber
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Tag number to validate
+ *     responses:
+ *       200:
+ *         description: Boolean result indicating whether the tag exists
+ */
+router.get(
+  "/check-sow-tag-number-exists/:sowTagNumber",
+  asyncHandler(BreedingSowController.checkSowTagNumberExists.bind(BreedingSowController)),
+);
+
+/**
+ * @swagger
  * /breedingsows/{id}:
  *   get:
  *     summary: Get a breeding sow by ID
@@ -57,9 +79,10 @@ router.get("/:id", asyncHandler(BreedingSowController.getById.bind(BreedingSowCo
  *           schema:
  *             type: object
  *             properties:
- *               status_id:
- *                 type: integer
- *                 example: 1
+ *               status:
+ *                 type: string
+ *                 enum: [Gestacion, Lactancia, Vacia, No Productiva]
+ *                 example: "Vacia"
  *               sow_tag_number:
  *                 type: string
  *                 example: "SOW-0010"
@@ -172,17 +195,17 @@ router.delete("/:id", asyncHandler(BreedingSowController.delete.bind(BreedingSow
 
 /**
  * @swagger
- * /breedingsows/status/{statusId}:
+ * /breedingsows/status/{status}:
  *   get:
- *     summary: Get all breeding sows by status ID
+ *     summary: Get all breeding sows by status
  *     tags: [BreedingSows]
  *     parameters:
  *       - in: path
- *         name: statusId
+ *         name: status
  *         schema:
- *           type: integer
+ *           type: string
  *         required: true
- *         description: Status ID to filter breeding sows
+ *         description: Status value to filter breeding sows
  *     responses:
  *       200:
  *         description: List of breeding sows with the specified status
@@ -190,8 +213,8 @@ router.delete("/:id", asyncHandler(BreedingSowController.delete.bind(BreedingSow
  *         description: No breeding sows found for this status
  */
 router.get(
-  "/status/:statusId",
-  asyncHandler(BreedingSowController.getAllByStatusId.bind(BreedingSowController)),
+  "/status/:status",
+  asyncHandler(BreedingSowController.getAllByStatus.bind(BreedingSowController)),
 );
 
 /**
