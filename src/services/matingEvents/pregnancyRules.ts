@@ -2,6 +2,7 @@ export const PREGNANCY_RESULTS = {
   pendiente: "Pendiente",
   positivo: "Positivo",
   negativo: "Negativo",
+  cancelado: "Cancelado",
 } as const;
 
 export const SOW_STATUS_LABELS = {
@@ -9,6 +10,7 @@ export const SOW_STATUS_LABELS = {
   gestacion: "Gestacion",
   lactancia: "Lactancia",
   noProductiva: "No Productiva",
+  retirada: "Retirada",
 } as const;
 
 export type PregnancyResult = (typeof PREGNANCY_RESULTS)[keyof typeof PREGNANCY_RESULTS];
@@ -40,6 +42,8 @@ export const parsePregnancyResult = (value: string): PregnancyResult | null => {
       return PREGNANCY_RESULTS.positivo;
     case "negativo":
       return PREGNANCY_RESULTS.negativo;
+    case "cancelado":
+      return PREGNANCY_RESULTS.cancelado;
     default:
       return null;
   }

@@ -1,5 +1,11 @@
 import type { Prisma } from "@prisma/client";
-import { createBreedingSow, deleteBreedingSow, updateBreedingSow } from "./breedingSowsCommands";
+import {
+  createBreedingSow,
+  deleteBreedingSow,
+  type RetireBreedingSowInput,
+  retireBreedingSow,
+  updateBreedingSow,
+} from "./breedingSowsCommands";
 import {
   getAllBreedingSows,
   getBreedingSowById,
@@ -35,6 +41,10 @@ class BreedingSowsService {
 
   async delete(id: number) {
     return await deleteBreedingSow(id);
+  }
+
+  async retire(id: number, data: RetireBreedingSowInput) {
+    return await retireBreedingSow(id, data);
   }
 
   async getAllByStatus(status: string) {

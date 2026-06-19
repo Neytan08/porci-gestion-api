@@ -5,6 +5,7 @@ const breedingSowStatusSchema = z.enum([
   "Lactancia",
   "Vacia",
   "No Productiva",
+  "Retirada",
 ]);
 
 // Breeding Sows Schema validation using Zod
@@ -41,3 +42,13 @@ export const breedingSowsschema = z.object({
 
 // Partial schema allows optional fields for updates
 export const breedingSowsUpdateSchema = breedingSowsschema.partial();
+
+export const breedingSowRetireSchema = z.object({
+  removal_date: z
+    .string()
+    .refine((date) => !Number.isNaN(Date.parse(date)), {
+      message: "Invalid removal_date format",
+    })
+    .optional(),
+  removal_reason: z.string().nullable().optional(),
+});

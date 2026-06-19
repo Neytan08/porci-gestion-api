@@ -4,6 +4,7 @@ import ApiError, { type ApiErrorLogContext } from "../../utils/apiError";
 export const BREEDING_SOW_ERROR_CODES = {
   BREEDING_SOW_BODY_INVALID: "BREEDING_SOW_BODY_INVALID",
   BREEDING_SOW_UPDATE_BODY_INVALID: "BREEDING_SOW_UPDATE_BODY_INVALID",
+  BREEDING_SOW_RETIRE_BODY_INVALID: "BREEDING_SOW_RETIRE_BODY_INVALID",
   BREEDING_SOW_ID_INVALID: "BREEDING_SOW_ID_INVALID",
   BREEDING_SOW_TAG_NUMBER_INVALID: "BREEDING_SOW_TAG_NUMBER_INVALID",
   BREEDING_SOW_TAG_NUMBER_ALREADY_EXISTS: "BREEDING_SOW_TAG_NUMBER_ALREADY_EXISTS",
@@ -51,7 +52,19 @@ export const breedingSowErrors = {
       { issues },
     ),
 
-  invalidBreedingSowId: (rawValue: unknown, operation: "retrieve" | "update" | "delete") =>
+  invalidRetirePayload: (issues: ZodIssue[]) =>
+    createBreedingSowError(
+      400,
+      BREEDING_SOW_ERROR_CODES.BREEDING_SOW_RETIRE_BODY_INVALID,
+      "The request body contains invalid fields for retiring the breeding sow.",
+      "Cannot retire breeding sow",
+      { issues },
+    ),
+
+  invalidBreedingSowId: (
+    rawValue: unknown,
+    operation: "retrieve" | "update" | "delete" | "retire",
+  ) =>
     createBreedingSowError(
       400,
       BREEDING_SOW_ERROR_CODES.BREEDING_SOW_ID_INVALID,
@@ -78,7 +91,10 @@ export const breedingSowErrors = {
       { status },
     ),
 
-  breedingSowNotFound: (sowId: number, operation: "retrieve" | "update" | "delete") =>
+  breedingSowNotFound: (
+    sowId: number,
+    operation: "retrieve" | "update" | "delete" | "retire",
+  ) =>
     createBreedingSowError(
       404,
       BREEDING_SOW_ERROR_CODES.BREEDING_SOW_NOT_FOUND,
@@ -127,7 +143,7 @@ export const breedingSowErrors = {
     createBreedingSowError(
       409,
       BREEDING_SOW_ERROR_CODES.BREEDING_SOW_HAS_MATING_EVENTS,
-      "The breeding sow cannot be deleted because it has mating events associated.",
+      "The breeding sow cannot be deleted because it has reproductive history. Mark it as retired instead.",
       "Cannot delete breeding sow",
       { sowId, matingEventsCount },
     ),

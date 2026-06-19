@@ -1,17 +1,26 @@
 import type { Prisma } from "@prisma/client";
 import prisma from "../../prismaClient";
-import { normalizeSowTagNumber } from "./breedingSowsRules";
+import { BREEDING_SOW_STATUSES, normalizeSowTagNumber } from "./breedingSowsRules";
 
 type BreedingSowsQueryClient = Pick<
   Prisma.TransactionClient,
   "breedingsows" | "breed" | "matingevents"
 >;
 
+const activeBreedingSowWhere = {
+  removal_date: null,
+  OR: [
+    { status: null },
+    { status: { not: BREEDING_SOW_STATUSES.retirada } },
+  ],
+} satisfies Prisma.breedingsowsWhereInput;
+
 /**
  * Returns the breeding-sow collection with breed data.
  */
 export const getAllBreedingSows = async () => {
   return await prisma.breedingsows.findMany({
+    where: activeBreedingSowWhere,
     include: { breed: true },
   });
 };
@@ -20,8 +29,10 @@ export const getAllBreedingSows = async () => {
  * Retrieves one breeding sow by id with its breed relationship.
  */
 export const getBreedingSowById = async (id: number) => {
-  return await prisma.breedingsows.findUnique({
-    where: { sow_id: id },
+  return await prisma.breedingsows.findFirst({
+    where: {
+      AND: [{ sow_id: id }, activeBreedingSowWhere],
+    },
     include: { breed: true },
   });
 };
@@ -64,13 +75,12 @@ export const getBreedingSowByNormalizedTagNumber = async (
  */
 export const getBreedingSowsByStatus = async (status: string) => {
   return await prisma.breedingsows.findMany({
-    where: { status },
+    where: {
+      AND: [{ status }, activeBreedingSowWhere],
+    },
   });
 };
 
-/**
- * Counts related mating events so delete can return a domain conflict.
- */
 export const countBreedingSowMatingEvents = async (
   sowId: number,
   queryClient: BreedingSowsQueryClient = prisma,

@@ -11,7 +11,13 @@ import {
   getBreedingSowBreedById,
   getBreedingSowByNormalizedTagNumber,
 } from "./breedingSowsQueries";
-import { isBeforeDate } from "./breedingSowsRules";
+import { BREEDING_SOW_STATUSES, isBeforeDate } from "./breedingSowsRules";
+import { PREGNANCY_RESULTS } from "../matingEvents/pregnancyRules";
+
+export type RetireBreedingSowInput = {
+  removal_date?: string;
+  removal_reason?: string | null;
+};
 
 /**
  * Ensures the incoming breed reference points to an existing breed.
@@ -152,7 +158,7 @@ export const updateBreedingSow = async (
 };
 
 /**
- * Deletes a breeding sow only when it has no mating events attached.
+ * Deletes a breeding sow only when it has no reproductive history attached.
  */
 export const deleteBreedingSow = async (id: number) => {
   try {
@@ -178,4 +184,55 @@ export const deleteBreedingSow = async (id: number) => {
 
     throw error;
   }
+};
+
+/**
+ * Retires a breeding sow while preserving reproductive history.
+ */
+export const retireBreedingSow = async (id: number, data: RetireBreedingSowInput) => {
+  return await prisma.$transaction(async (tx) => {
+    const currentSow = await tx.breedingsows.findUnique({
+      where: { sow_id: id },
+      select: {
+        sow_id: true,
+        entry_date: true,
+      },
+    });
+
+    if (!currentSow) {
+      throw breedingSowErrors.breedingSowNotFound(id, "retire");
+    }
+
+    const removalDate = data.removal_date ?? new Date();
+
+    if (isBeforeDate(removalDate, currentSow.entry_date)) {
+      throw breedingSowErrors.removalDateBeforeEntryDate(
+        currentSow.entry_date,
+        removalDate,
+      );
+    }
+
+    await tx.matingevents.updateMany({
+      where: {
+        sow_id: id,
+        pregnancy_result: {
+          in: [PREGNANCY_RESULTS.pendiente, PREGNANCY_RESULTS.positivo],
+        },
+      },
+      data: {
+        pregnancy_result: PREGNANCY_RESULTS.cancelado,
+      },
+    });
+
+    return await tx.breedingsows.update({
+      where: { sow_id: id },
+      data: {
+        status: BREEDING_SOW_STATUSES.retirada,
+        removal_date: removalDate,
+        ...(data.removal_reason !== undefined
+          ? { removal_reason: data.removal_reason }
+          : {}),
+      },
+    });
+  });
 };

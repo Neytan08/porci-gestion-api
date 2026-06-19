@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import {
+  breedingSowRetireSchema,
   breedingSowsschema,
   breedingSowsUpdateSchema,
 } from "../schemas_validations/breedingSows.schema";
@@ -89,6 +90,26 @@ class BreedingSowsController {
       sowTagNumber: deleted.sow_tag_number,
     });
     res.status(204).send();
+  }
+
+  async retire(req: Request, res: Response) {
+    const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
+      breedingSowErrors.invalidBreedingSowId(rawValue, "retire"),
+    );
+    const parseResult = breedingSowRetireSchema.safeParse(req.body ?? {});
+
+    if (!parseResult.success) {
+      throw breedingSowErrors.invalidRetirePayload(parseResult.error.issues);
+    }
+
+    const retiredSow = await BreedingSowsService.retire(id, parseResult.data);
+
+    logger.info("Retired breeding sow", {
+      sowId: retiredSow.sow_id,
+      sowTagNumber: retiredSow.sow_tag_number,
+      removalDate: retiredSow.removal_date,
+    });
+    res.json(retiredSow);
   }
 
   async getAllByStatus(req: Request, res: Response) {

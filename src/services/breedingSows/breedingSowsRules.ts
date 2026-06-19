@@ -3,6 +3,7 @@ export const BREEDING_SOW_STATUSES = {
   lactancia: "Lactancia",
   vacia: "Vacia",
   noProductiva: "No Productiva",
+  retirada: "Retirada",
 } as const;
 
 export type BreedingSowStatus = (typeof BREEDING_SOW_STATUSES)[keyof typeof BREEDING_SOW_STATUSES];
