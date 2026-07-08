@@ -73,6 +73,15 @@ export const breedingSowErrors = {
       { sowId: rawValue },
     ),
 
+  invalidBreedingSowIds: (rawValue: unknown) =>
+    createBreedingSowError(
+      400,
+      BREEDING_SOW_ERROR_CODES.BREEDING_SOW_ID_INVALID,
+      "The breeding sow ids must be positive integers.",
+      "Cannot retire breeding sows",
+      { sowIds: rawValue },
+    ),
+
   invalidSowTagNumber: (rawValue: unknown) =>
     createBreedingSowError(
       400,
@@ -101,6 +110,15 @@ export const breedingSowErrors = {
       "The breeding sow was not found.",
       `Cannot ${operation} breeding sow`,
       { sowId },
+    ),
+
+  breedingSowsNotFound: (sowIds: number[], missingSowIds: number[]) =>
+    createBreedingSowError(
+      404,
+      BREEDING_SOW_ERROR_CODES.BREEDING_SOW_NOT_FOUND,
+      "One or more breeding sows were not found.",
+      "Cannot retire breeding sows",
+      { sowIds, missingSowIds },
     ),
 
   breedNotFound: (breedId: number) =>

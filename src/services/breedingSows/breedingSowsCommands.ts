@@ -187,34 +187,77 @@ export const deleteBreedingSow = async (id: number) => {
 };
 
 /**
- * Retires a breeding sow while preserving reproductive history.
+ * Deduplicates retire targets and protects the command from empty batches.
  */
-export const retireBreedingSow = async (id: number, data: RetireBreedingSowInput) => {
-  return await prisma.$transaction(async (tx) => {
-    const currentSow = await tx.breedingsows.findUnique({
-      where: { sow_id: id },
-      select: {
-        sow_id: true,
-        entry_date: true,
-      },
-    });
+const getUniqueBreedingSowIdsOrThrow = (sowIds: number[]) => {
+  const uniqueSowIds = Array.from(new Set(sowIds));
 
-    if (!currentSow) {
-      throw breedingSowErrors.breedingSowNotFound(id, "retire");
-    }
+  if (uniqueSowIds.length === 0) {
+    throw breedingSowErrors.invalidBreedingSowIds(sowIds);
+  }
 
-    const removalDate = data.removal_date ?? new Date();
+  return uniqueSowIds;
+};
 
-    if (isBeforeDate(removalDate, currentSow.entry_date)) {
+/**
+ * Loads every sow requested for retirement and fails before mutating data when any id is missing.
+ */
+const loadBreedingSowsForRetirement = async (
+  tx: Prisma.TransactionClient,
+  sowIds: number[],
+) => {
+  const sows = await tx.breedingsows.findMany({
+    where: { sow_id: { in: sowIds } },
+    select: {
+      sow_id: true,
+      entry_date: true,
+    },
+  });
+
+  if (sows.length !== sowIds.length) {
+    const foundIds = new Set(sows.map(({ sow_id }) => sow_id));
+    const missingSowIds = sowIds.filter((sowId) => !foundIds.has(sowId));
+    throw breedingSowErrors.breedingSowsNotFound(sowIds, missingSowIds);
+  }
+
+  return sows;
+};
+
+/**
+ * Keeps each sow's removal date after its own entry date before retiring the batch.
+ */
+const ensureRetirementDatesAreConsistent = (
+  sows: Array<{ sow_id: number; entry_date: Date }>,
+  removalDate: unknown,
+) => {
+  for (const sow of sows) {
+    if (isBeforeDate(removalDate, sow.entry_date)) {
       throw breedingSowErrors.removalDateBeforeEntryDate(
-        currentSow.entry_date,
+        sow.entry_date,
         removalDate,
       );
     }
+  }
+};
+
+/**
+ * Retires one or many breeding sows while preserving reproductive history.
+ */
+export const retireBreedingSow = async (
+  ids: number[],
+  data: RetireBreedingSowInput,
+) => {
+  const uniqueSowIds = getUniqueBreedingSowIdsOrThrow(ids);
+
+  return await prisma.$transaction(async (tx) => {
+    const currentSows = await loadBreedingSowsForRetirement(tx, uniqueSowIds);
+    const removalDate = data.removal_date ?? new Date();
+
+    ensureRetirementDatesAreConsistent(currentSows, removalDate);
 
     await tx.matingevents.updateMany({
       where: {
-        sow_id: id,
+        sow_id: { in: uniqueSowIds },
         pregnancy_result: {
           in: [PREGNANCY_RESULTS.pendiente, PREGNANCY_RESULTS.positivo],
         },
@@ -224,8 +267,8 @@ export const retireBreedingSow = async (id: number, data: RetireBreedingSowInput
       },
     });
 
-    return await tx.breedingsows.update({
-      where: { sow_id: id },
+    return await tx.breedingsows.updateMany({
+      where: { sow_id: { in: uniqueSowIds } },
       data: {
         status: BREEDING_SOW_STATUSES.retirada,
         removal_date: removalDate,

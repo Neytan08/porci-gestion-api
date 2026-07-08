@@ -174,24 +174,26 @@ router.put("/:id", asyncHandler(BreedingSowController.update.bind(BreedingSowCon
 
 /**
  * @swagger
- * /breedingsows/{id}/retire:
+ * /breedingsows/retire:
  *   patch:
- *     summary: Retire a breeding sow
+ *     summary: Retire one or many breeding sows
  *     tags: [BreedingSows]
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: integer
- *         required: true
- *         description: ID of the breeding sow to retire
  *     requestBody:
- *       required: false
+ *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - sow_ids
  *             properties:
+ *               sow_ids:
+ *                 oneOf:
+ *                   - type: integer
+ *                   - type: array
+ *                     items:
+ *                       type: integer
+ *                 example: [1, 2]
  *               removal_date:
  *                 type: string
  *                 format: date
@@ -201,12 +203,12 @@ router.put("/:id", asyncHandler(BreedingSowController.update.bind(BreedingSowCon
  *                 example: "End of productive life"
  *     responses:
  *       200:
- *         description: Breeding sow retired successfully
+ *         description: Breeding sows retired successfully
  *       404:
- *         description: Breeding sow not found
+ *         description: One or more breeding sows were not found
  */
 router.patch(
-  "/:id/retire",
+  "/retire",
   asyncHandler(BreedingSowController.retire.bind(BreedingSowController)),
 );
 

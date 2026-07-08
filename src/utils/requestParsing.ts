@@ -23,6 +23,23 @@ export const parsePositiveIdOrThrow = (
 };
 
 /**
+ * Normalizes a single body id or a body id list into the deduplicated batch
+ * format expected by bulk service commands.
+ */
+export const parsePositiveIdsOrThrow = (
+  value: unknown,
+  buildError: (rawValue: unknown) => Error,
+) => {
+  const rawIds = Array.isArray(value) ? value : [value];
+
+  if (rawIds.length === 0 || !rawIds.every(isPositiveInteger)) {
+    throw buildError(value);
+  }
+
+  return Array.from(new Set(rawIds));
+};
+
+/**
  * Ensures string params that represent tag numbers, names, or statuses are not
  * empty after trimming whitespace.
  */

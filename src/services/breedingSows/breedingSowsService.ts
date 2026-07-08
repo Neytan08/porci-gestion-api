@@ -43,8 +43,8 @@ class BreedingSowsService {
     return await deleteBreedingSow(id);
   }
 
-  async retire(id: number, data: RetireBreedingSowInput) {
-    return await retireBreedingSow(id, data);
+  async retire(ids: number[], data: RetireBreedingSowInput) {
+    return await retireBreedingSow(ids, data);
   }
 
   async getAllByStatus(status: string) {

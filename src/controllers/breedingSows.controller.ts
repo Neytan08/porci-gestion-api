@@ -1,14 +1,18 @@
 import type { Request, Response } from "express";
 import {
   breedingSowRetireSchema,
-  breedingSowsschema,
-  breedingSowsUpdateSchema,
+  breedingSowSchema,
+  breedingSowUpdateSchema,
 } from "../schemas_validations/breedingSows.schema";
 import { breedingSowErrors } from "../services/breedingSows/breedingSowErrors";
 import { parseBreedingSowStatus } from "../services/breedingSows/breedingSowsRules";
 import BreedingSowsService from "../services/breedingSows/breedingSowsService";
 import logger from "../utils/logger";
-import { parsePositiveIdOrThrow, parseRequiredStringParamOrThrow } from "../utils/requestParsing";
+import {
+  parsePositiveIdOrThrow,
+  parsePositiveIdsOrThrow,
+  parseRequiredStringParamOrThrow,
+} from "../utils/requestParsing";
 
 class BreedingSowsController {
   async getAll(_: Request, res: Response) {
@@ -43,7 +47,7 @@ class BreedingSowsController {
   }
 
   async create(req: Request, res: Response) {
-    const parseResult = breedingSowsschema.safeParse(req.body);
+    const parseResult = breedingSowSchema.safeParse(req.body);
 
     if (!parseResult.success) {
       throw breedingSowErrors.invalidCreatePayload(parseResult.error.issues);
@@ -60,7 +64,7 @@ class BreedingSowsController {
   }
 
   async update(req: Request, res: Response) {
-    const parseResult = breedingSowsUpdateSchema.safeParse(req.body);
+    const parseResult = breedingSowUpdateSchema.safeParse(req.body);
 
     if (!parseResult.success) {
       throw breedingSowErrors.invalidUpdatePayload(parseResult.error.issues);
@@ -93,23 +97,26 @@ class BreedingSowsController {
   }
 
   async retire(req: Request, res: Response) {
-    const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
-      breedingSowErrors.invalidBreedingSowId(rawValue, "retire"),
-    );
     const parseResult = breedingSowRetireSchema.safeParse(req.body ?? {});
 
     if (!parseResult.success) {
       throw breedingSowErrors.invalidRetirePayload(parseResult.error.issues);
     }
 
-    const retiredSow = await BreedingSowsService.retire(id, parseResult.data);
+    const { sow_ids, ...retireData } = parseResult.data;
+    const sowIds = parsePositiveIdsOrThrow(
+      sow_ids,
+      breedingSowErrors.invalidBreedingSowIds,
+    );
 
-    logger.info("Retired breeding sow", {
-      sowId: retiredSow.sow_id,
-      sowTagNumber: retiredSow.sow_tag_number,
-      removalDate: retiredSow.removal_date,
+    const result = await BreedingSowsService.retire(sowIds, retireData);
+
+    logger.info("Retired breeding sows", {
+      sowIds,
+      retiredCount: result.count,
+      removalDate: retireData.removal_date ?? null,
     });
-    res.json(retiredSow);
+    res.json(result);
   }
 
   async getAllByStatus(req: Request, res: Response) {
