@@ -12,6 +12,12 @@ import {
   getBoarByNormalizedTagNumber,
 } from "./boarsQueries";
 import { hasBoarDateValue, isRemovalDateBeforeBirthDate } from "./boarsRules";
+import { PREGNANCY_RESULTS } from "../matingEvents/pregnancyRules";
+
+export type RetireBoarInput = {
+  removal_date?: string;
+  removal_reason?: string | null;
+};
 
 /**
  * Guards chronological consistency for the boar lifecycle dates.
@@ -154,4 +160,89 @@ export const deleteBoar = async (id: number) => {
 
     throw error;
   }
+};
+
+/**
+ * Deduplicates retire targets and protects the command from empty batches.
+ */
+const getUniqueBoarIdsOrThrow = (boarIds: number[]) => {
+  const uniqueBoarIds = Array.from(new Set(boarIds));
+
+  if (uniqueBoarIds.length === 0) {
+    throw boarErrors.invalidBoarIds(boarIds);
+  }
+
+  return uniqueBoarIds;
+};
+
+/**
+ * Loads every boar requested for retirement and fails before mutating data when any id is missing.
+ */
+const loadBoarsForRetirement = async (
+  tx: Prisma.TransactionClient,
+  boarIds: number[],
+) => {
+  const boars = await tx.boars.findMany({
+    where: { boar_id: { in: boarIds } },
+    select: {
+      boar_id: true,
+      birth_date: true,
+    },
+  });
+
+  if (boars.length !== boarIds.length) {
+    const foundIds = new Set(boars.map(({ boar_id }) => boar_id));
+    const missingBoarIds = boarIds.filter((boarId) => !foundIds.has(boarId));
+    throw boarErrors.boarsNotFound(boarIds, missingBoarIds);
+  }
+
+  return boars;
+};
+
+/**
+ * Keeps each boar's removal date after its own birth date before retiring the batch.
+ */
+const ensureRetirementDatesAreConsistent = (
+  boars: Array<{ boar_id: number; birth_date: Date }>,
+  removalDate: unknown,
+) => {
+  for (const boar of boars) {
+    ensureRemovalDateIsNotBeforeBirthDate(boar.birth_date, removalDate);
+  }
+};
+
+/**
+ * Retires one or many boars while preserving reproductive history.
+ */
+export const retireBoar = async (ids: number[], data: RetireBoarInput) => {
+  const uniqueBoarIds = getUniqueBoarIdsOrThrow(ids);
+
+  return await prisma.$transaction(async (tx) => {
+    const currentBoars = await loadBoarsForRetirement(tx, uniqueBoarIds);
+    const removalDate = data.removal_date ?? new Date();
+
+    ensureRetirementDatesAreConsistent(currentBoars, removalDate);
+
+    await tx.matingevents.updateMany({
+      where: {
+        boar_id: { in: uniqueBoarIds },
+        pregnancy_result: {
+          in: [PREGNANCY_RESULTS.pendiente, PREGNANCY_RESULTS.positivo],
+        },
+      },
+      data: {
+        pregnancy_result: PREGNANCY_RESULTS.cancelado,
+      },
+    });
+
+    return await tx.boars.updateMany({
+      where: { boar_id: { in: uniqueBoarIds } },
+      data: {
+        removal_date: removalDate,
+        ...(data.removal_reason !== undefined
+          ? { removal_reason: data.removal_reason }
+          : {}),
+      },
+    });
+  });
 };
