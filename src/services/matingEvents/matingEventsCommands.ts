@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import type { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import prisma from "../../prismaClient";
+import { BREEDING_SOW_STATUSES } from "../breedingSows/breedingSowsRules";
 import {
   getBlockingMatingEventBySowId,
   getPregnancyUpdateEvents,
@@ -14,9 +15,9 @@ import {
   isSupportedPregnancyResultTransition,
   parsePregnancyResult,
   getSowStatusTransition,
-  SOW_STATUS_LABELS,
   type PregnancyResult,
 } from "./pregnancyRules";
+
 
 const isPrismaRecordNotFoundError = (
   error: unknown,
@@ -128,7 +129,7 @@ const resolveSowStatusTransition = (
     return null;
   }
 
-  return SOW_STATUS_LABELS[nextStatusKey];
+  return BREEDING_SOW_STATUSES[nextStatusKey];
 };
 
 /**
@@ -147,7 +148,7 @@ const restoreSowStatusAfterDeletingPositiveEvent = async (
 
   await tx.breedingsows.update({
     where: { sow_id: sowId },
-    data: { status: SOW_STATUS_LABELS[nextStatusKey] },
+    data: { status: BREEDING_SOW_STATUSES[nextStatusKey] },
   });
 };
 

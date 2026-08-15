@@ -1,21 +1,34 @@
 import { z } from "zod";
 
-// Farrowing Schema validation using Zod
+const dateStringSchema = (fieldName: string) =>
+  z
+    .string()
+    .refine((date) => !Number.isNaN(Date.parse(date)), {
+      message: `Invalid ${fieldName} format`,
+    });
+
+const nonNegativeIntegerSchema = z.number().int().nonnegative();
+const optionalCountWithZeroDefault = nonNegativeIntegerSchema.optional().default(0);
+
+// Farrowing creation does not accept weaning_date because it is derived from farrowing_date.
 export const farrowingsSchema = z.object({
   sow_id: z.number().int().positive(),
-  farrowing_date: z
-    .string()
-    .refine((date) => !isNaN(Date.parse(date)), { message: "Invalid farrowing_date format" }),
-  male_piglets: z.number().int().nonnegative(),
-  female_piglets: z.number().int().nonnegative(),
-  still_births: z.number().int().nonnegative(),
-  mummies: z.number().int().nonnegative(),
-  weaning_date: z
-    .string()
-    .refine((date) => !isNaN(Date.parse(date)), { message: "Invalid weaning_date format" }),
-  weaned_piglets: z.number().int().nonnegative(),
+  farrowing_date: dateStringSchema("farrowing_date"),
+  male_piglets: nonNegativeIntegerSchema,
+  female_piglets: nonNegativeIntegerSchema,
+  still_births: optionalCountWithZeroDefault,
+  mummies: optionalCountWithZeroDefault,
   notes: z.string().optional(),
 });
 
-// Partial schema allows optional fields for updates
-export const farrowingUpdateSchema = farrowingsSchema.partial();
+// Updates can change farrowing_date, but weaning_date remains derived data.
+export const farrowingUpdateSchema = z.object({
+  sow_id: z.number().int().positive().optional(),
+  farrowing_date: dateStringSchema("farrowing_date").optional(),
+  male_piglets: nonNegativeIntegerSchema.optional(),
+  female_piglets: nonNegativeIntegerSchema.optional(),
+  still_births: nonNegativeIntegerSchema.optional(),
+  mummies: nonNegativeIntegerSchema.optional(),
+  weaned_piglets: nonNegativeIntegerSchema.optional(),
+  notes: z.string().optional(),
+});

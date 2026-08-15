@@ -1,7 +1,7 @@
 export const BREEDING_SOW_STATUSES = {
-  gestacion: "Gestacion",
-  lactancia: "Lactancia",
   vacia: "Vacia",
+  gestacion: "Gestación",
+  lactancia: "Lactancia",
   noProductiva: "No Productiva",
   retirada: "Retirada",
 } as const;

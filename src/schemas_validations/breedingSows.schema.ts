@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 const breedingSowStatusSchema = z.enum([
-  "Gestacion",
-  "Lactancia",
   "Vacia",
+  "Gestación",
+  "Lactancia",
   "No Productiva",
   "Retirada",
 ]);

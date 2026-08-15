@@ -116,6 +116,7 @@ export const getPregnancyUpdateEvents = async (
 /**
  * Groups mating events by their stored pregnancy result for reporting purposes.
  */
+// TODO: I need to modify this function to include just the events with pregnancy_result = positivo, pendiente, and negativo. The other values are not relevant for the report.
 export const getMatingEventsGroupedByPregnancyResult = async () => {
   const events = await prisma.matingevents.findMany({
     orderBy: { pregnancy_result: "asc" },
