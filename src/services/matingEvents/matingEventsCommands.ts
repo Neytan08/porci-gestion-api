@@ -11,6 +11,7 @@ import {
 import { matingEventErrors } from "./matingEventErrors";
 import {
   getSowStatusAfterDeletingMatingEvent,
+  getSowStatusForCreatedMatingEvent,
   isEmptySowStatus,
   isSupportedPregnancyResultTransition,
   parsePregnancyResult,
@@ -222,9 +223,20 @@ export const createMatingEvent = async (data: Prisma.matingeventsUncheckedCreate
       throw matingEventErrors.sowNotEmpty(data.sow_id, sow.status);
     }
 
-    return await tx.matingevents.create({
+    const newMatingEvent = await tx.matingevents.create({
       data,
     });
+
+    // The sow status is updated only when the new mating event has a pregnancy result that actually moves the sow.
+    const nextSowStatus = getSowStatusForCreatedMatingEvent(data.pregnancy_result ?? null);
+    if (nextSowStatus) {
+      await tx.breedingsows.update({
+        where: { sow_id: data.sow_id },
+        data: { status: nextSowStatus },
+      });
+    }
+
+    return newMatingEvent;
   });
 };
 

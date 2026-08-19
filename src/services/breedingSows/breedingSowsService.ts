@@ -47,7 +47,7 @@ class BreedingSowsService {
     return await retireBreedingSow(ids, data);
   }
 
-  async getAllByStatus(status: string) {
+  async getAllBreedingSowsByStatus(status: string) {
     return await getBreedingSowsByStatus(status);
   }
 }

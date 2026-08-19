@@ -1,18 +1,10 @@
 import type { Request, Response } from "express";
-import {
-  breedingSowRetireSchema,
-  breedingSowSchema,
-  breedingSowUpdateSchema,
-} from "../schemas_validations/breedingSows.schema";
+import { breedingSowRetireSchema, breedingSowSchema, breedingSowUpdateSchema } from "../schemas_validations/breedingSows.schema";
 import { breedingSowErrors } from "../services/breedingSows/breedingSowErrors";
 import { parseBreedingSowStatus } from "../services/breedingSows/breedingSowsRules";
 import BreedingSowsService from "../services/breedingSows/breedingSowsService";
 import logger from "../utils/logger";
-import {
-  parsePositiveIdOrThrow,
-  parsePositiveIdsOrThrow,
-  parseRequiredStringParamOrThrow,
-} from "../utils/requestParsing";
+import { parsePositiveIdOrThrow, parsePositiveIdsOrThrow, parseRequiredStringParamOrThrow } from "../utils/requestParsing";
 
 class BreedingSowsController {
   async getAll(_: Request, res: Response) {
@@ -130,7 +122,7 @@ class BreedingSowsController {
       throw breedingSowErrors.invalidStatus(rawStatus);
     }
 
-    const sows = await BreedingSowsService.getAllByStatus(status);
+    const sows = await BreedingSowsService.getAllBreedingSowsByStatus(status);
 
     logger.info("Fetched breeding sows by status", { status, count: sows.length });
     res.json(sows);

@@ -7,7 +7,7 @@ export const matingEventsSchema = z.object({
   insemination_date: z
     .string()
     .refine((date) => !isNaN(Date.parse(date)), { message: "Invalid insemination_date format" }),
-  insemination_type: z.enum(["Monta Natural", "Artificial"]),
+  insemination_type: z.enum(["Monta Natural", "Inseminación"]),
   pregnancy_result: z.enum(["Pendiente", "Positivo", "Negativo"]),
   notes: z.string().optional(),
 });

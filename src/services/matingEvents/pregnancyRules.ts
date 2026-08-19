@@ -111,3 +111,23 @@ export const getSowStatusAfterDeletingMatingEvent = (
 
   return null;
 };
+
+/**
+ * Returns the sow status that should be set when a new mating event is created.
+ * Only a positive pregnancy result places the sow into gestation immediately.
+ */
+export const getSowStatusForCreatedMatingEvent = (
+  pregnancyResult: string | null,
+): string | null => {
+  if (!pregnancyResult) {
+    return null;
+  }
+
+  const normalizedPregnancyResult = parsePregnancyResult(pregnancyResult);
+
+  if (normalizedPregnancyResult === PREGNANCY_RESULTS.positivo) {
+    return BREEDING_SOW_STATUSES.gestacion;
+  }
+
+  return null;
+};
