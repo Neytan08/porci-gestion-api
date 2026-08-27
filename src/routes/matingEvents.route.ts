@@ -85,19 +85,19 @@ router.get("/:id", asyncHandler(matingEventsController.getById.bind(matingEvents
  *               boar_id:
  *                 type: integer
  *                 example: 1
- *               insemination_date:
+ *               reproduction_date:
  *                 type: string
  *                 format: date
  *                 example: "2025-10-05"
- *               insemination_type:
+ *               reproduction_type:
  *                 type: string
- *                 example: "Artificial"
+ *                 example: "Inseminación Artificial"
  *               pregnancy_result:
  *                 type: string
  *                 example: "Pendiente"
  *               notes:
  *                 type: string
- *                 example: "First insemination attempt of the season"
+ *                 example: "First reproduction attempt of the season"
  *     responses:
  *       201:
  *         description: Mating event created successfully

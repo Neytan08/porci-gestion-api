@@ -4,10 +4,10 @@ import { z } from "zod";
 export const matingEventsSchema = z.object({
   sow_id: z.number().int().positive(),
   boar_id: z.number().int().optional(),
-  insemination_date: z
+  reproduction_date: z
     .string()
-    .refine((date) => !isNaN(Date.parse(date)), { message: "Invalid insemination_date format" }),
-  insemination_type: z.enum(["Monta Natural", "Inseminación"]),
+    .refine((date) => !isNaN(Date.parse(date)), { message: "Invalid reproduction_date format" }),
+  reproduction_type: z.enum(["Monta Natural", "Inseminación Artificial"]),
   pregnancy_result: z.enum(["Pendiente", "Positivo", "Negativo"]),
   notes: z.string().optional(),
 });

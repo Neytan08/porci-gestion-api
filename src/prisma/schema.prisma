@@ -44,8 +44,8 @@ model matingevents {
   mating_id         Int          @id @default(autoincrement())
   sow_id            Int
   boar_id           Int?
-  insemination_date DateTime     @db.Date
-  insemination_type String?      @db.VarChar(50)
+  reproduction_date DateTime     @db.Date
+  reproduction_type String?      @db.VarChar(50)
   pregnancy_result  String?      @db.VarChar(50)
   notes             String?
   farrowings        farrowings[]
@@ -87,7 +87,7 @@ model farrowings {
   farrowing_date DateTime     @db.Timestamp(6)
   male_piglets   Int?         @default(0)
   female_piglets Int?         @default(0)
-  live_births    Int?         @default(dbgenerated("((male_piglets + female_piglets) - still_births)"))
+  live_births    Int?         @default(dbgenerated("(male_piglets + female_piglets)"))
   still_births   Int?         @default(0)
   mummies        Int?         @default(0)
   weaning_date   DateTime?    @default(dbgenerated("(farrowing_date + '30 days'::interval)")) @db.Timestamp(6)
