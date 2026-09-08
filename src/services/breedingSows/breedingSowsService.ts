@@ -10,8 +10,11 @@ import {
   getAllBreedingSows,
   getBreedingSowById,
   getBreedingSowByNormalizedTagNumber,
+  getBreedingSowStatusById,
   getBreedingSowsByStatus,
 } from "./breedingSowsQueries";
+import { ensureManualStatusChangeIsAllowed } from "./breedingSowsStatusValidation";
+import { breedingSowErrors } from "./breedingSowErrors";
 
 /**
  * Keeps the public breeding-sows service API stable while delegating
@@ -37,6 +40,16 @@ class BreedingSowsService {
 
   async update(id: number, data: Prisma.breedingsowsUncheckedUpdateInput) {
     return await updateBreedingSow(id, data);
+  }
+
+  async validateStatusChange(id: number, status: string) {
+    const sow = await getBreedingSowStatusById(id);
+
+    if (!sow) {
+      throw breedingSowErrors.breedingSowNotFound(id, "retrieve");
+    }
+
+    return await ensureManualStatusChangeIsAllowed(id, sow.status, status);
   }
 
   async delete(id: number) {

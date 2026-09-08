@@ -126,6 +126,46 @@ router.post("/", asyncHandler(BreedingSowController.create.bind(BreedingSowContr
 
 /**
  * @swagger
+ * /breedingsows/{id}/validate-status-change:
+ *   post:
+ *     summary: Validate a proposed breeding sow status change
+ *     tags: [BreedingSows]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID of the breeding sow
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 example: "Gestación"
+ *     responses:
+ *       204:
+ *         description: The proposed status change is allowed
+ *       400:
+ *         description: Invalid request payload
+ *       404:
+ *         description: Breeding sow not found
+ *       409:
+ *         description: The proposed status change is blocked by an active reproductive workflow
+ */
+router.post(
+  "/:id/validate-status-change",
+  asyncHandler(BreedingSowController.validateStatusChange.bind(BreedingSowController)),
+);
+
+/**
+ * @swagger
  * /breedingsows/{id}:
  *   put:
  *     summary: Update an existing breeding sow

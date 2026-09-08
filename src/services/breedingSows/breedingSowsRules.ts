@@ -34,6 +34,8 @@ export const parseBreedingSowStatus = (status: string): BreedingSowStatus | null
       return BREEDING_SOW_STATUSES.vacia;
     case "no productiva":
       return BREEDING_SOW_STATUSES.noProductiva;
+    case "retirada":
+      return BREEDING_SOW_STATUSES.retirada;
     default:
       return null;
   }

@@ -1,12 +1,21 @@
 import { z } from "zod";
+import { BREEDING_SOW_STATUSES, parseBreedingSowStatus } from "../services/breedingSows/breedingSowsRules";
 
-const breedingSowStatusSchema = z.enum([
-  "Vacia",
-  "Gestación",
-  "Lactancia",
-  "No Productiva",
-  "Retirada",
-]);
+const breedingSowStatusNames = Object.values(BREEDING_SOW_STATUSES).join(", ");
+
+const breedingSowStatusSchema = z.string().transform((status, context) => {
+  const parsedStatus = parseBreedingSowStatus(status);
+
+  if (!parsedStatus) {
+    context.addIssue({
+      code: "custom",
+      message: `Status must be one of: ${breedingSowStatusNames}.`,
+    });
+    return z.NEVER;
+  }
+
+  return parsedStatus;
+});
 
 const positiveIdSchema = z.number().int().positive();
 
@@ -44,6 +53,11 @@ export const breedingSowSchema = z.object({
 
 // Partial schema allows optional fields for updates
 export const breedingSowUpdateSchema = breedingSowSchema.partial();
+
+// Validation schema for changing the status of a breeding sow 
+export const breedingSowStatusChangeValidationSchema = z.object({
+  status: breedingSowStatusSchema,
+});
 
 export const breedingSowRetireSchema = z.object({
   sow_ids: z.union([positiveIdSchema, z.array(positiveIdSchema).nonempty()]),

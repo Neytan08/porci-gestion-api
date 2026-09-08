@@ -12,6 +12,7 @@ import {
   getBreedingSowByNormalizedTagNumber,
 } from "./breedingSowsQueries";
 import { BREEDING_SOW_STATUSES, isBeforeDate } from "./breedingSowsRules";
+import { ensureManualStatusChangeIsAllowed } from "./breedingSowsStatusValidation";
 import { PREGNANCY_RESULTS } from "../matingEvents/pregnancyRules";
 
 export type RetireBreedingSowInput = {
@@ -103,6 +104,7 @@ export const updateBreedingSow = async (
           entry_date: true,
           last_weaning_date: true,
           removal_date: true,
+          status: true,
         },
       });
 
@@ -118,6 +120,7 @@ export const updateBreedingSow = async (
         await ensureSowTagNumberIsAvailable(tx, data.sow_tag_number, id);
       }
 
+      // TODO: Consider if we should validate this on update, if so look for a elegant way to do it JUST A HEADS UP FOR NOW
       const nextEntryDate =
         typeof data.entry_date === "string" || data.entry_date instanceof Date
           ? data.entry_date
@@ -136,6 +139,15 @@ export const updateBreedingSow = async (
           : currentSow.removal_date;
 
       ensureBreedingSowDatesAreConsistent(nextEntryDate, nextLastWeaningDate, nextRemovalDate);
+
+      if (typeof data.status === "string" && data.status !== currentSow.status) {
+        await ensureManualStatusChangeIsAllowed(
+          id,
+          currentSow.status,
+          data.status,
+          tx,
+        );
+      }
 
       return await tx.breedingsows.update({
         where: { sow_id: id },
