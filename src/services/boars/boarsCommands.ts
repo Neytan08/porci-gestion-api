@@ -1,18 +1,9 @@
 import type { Prisma } from "@prisma/client";
 import prisma from "../../prismaClient";
-import {
-  isPrismaForeignKeyConstraintError,
-  isPrismaRecordNotFoundError,
-  isPrismaUniqueConstraintError,
-} from "../../utils/prismaErrors";
+import {  isPrismaForeignKeyConstraintError, isPrismaRecordNotFoundError, isPrismaUniqueConstraintError } from "../../utils/prismaErrors";
 import { boarErrors } from "./boarErrors";
-import {
-  countBoarMatingEvents,
-  getBoarBreedById,
-  getBoarByNormalizedTagNumber,
-} from "./boarsQueries";
+import { countBoarMatingEvents, getBoarBreedById, getBoarByNormalizedTagNumber } from "./boarsQueries";
 import { hasBoarDateValue, isRemovalDateBeforeBirthDate } from "./boarsRules";
-import { PREGNANCY_RESULTS } from "../matingEvents/pregnancyRules";
 
 export type RetireBoarInput = {
   removal_date?: string;
@@ -222,18 +213,6 @@ export const retireBoar = async (ids: number[], data: RetireBoarInput) => {
     const removalDate = data.removal_date ?? new Date();
 
     ensureRetirementDatesAreConsistent(currentBoars, removalDate);
-
-    await tx.matingevents.updateMany({
-      where: {
-        boar_id: { in: uniqueBoarIds },
-        pregnancy_result: {
-          in: [PREGNANCY_RESULTS.pendiente, PREGNANCY_RESULTS.positivo],
-        },
-      },
-      data: {
-        pregnancy_result: PREGNANCY_RESULTS.cancelado,
-      },
-    });
 
     return await tx.boars.updateMany({
       where: { boar_id: { in: uniqueBoarIds } },
