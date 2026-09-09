@@ -9,6 +9,10 @@ type BoarsQueryClient = Pick<Prisma.TransactionClient, "boars" | "breed" | "mati
  */
 export const getAllBoars = async () => {
   return await prisma.boars.findMany({
+    where: {
+      removal_date: null,
+      removal_reason: null,
+    },
     include: { breeds: true },
   });
 };

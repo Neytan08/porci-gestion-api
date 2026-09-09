@@ -11,7 +11,14 @@ import {
   getBreedingSowBreedById,
   getBreedingSowByNormalizedTagNumber,
 } from "./breedingSowsQueries";
-import { isBeforeDate } from "./breedingSowsRules";
+import { BREEDING_SOW_STATUSES, isBeforeDate } from "./breedingSowsRules";
+import { ensureManualStatusChangeIsAllowed } from "./breedingSowsStatusValidation";
+import { PREGNANCY_RESULTS } from "../matingEvents/pregnancyRules";
+
+export type RetireBreedingSowInput = {
+  removal_date?: string;
+  removal_reason?: string | null;
+};
 
 /**
  * Ensures the incoming breed reference points to an existing breed.
@@ -97,6 +104,7 @@ export const updateBreedingSow = async (
           entry_date: true,
           last_weaning_date: true,
           removal_date: true,
+          status: true,
         },
       });
 
@@ -112,6 +120,7 @@ export const updateBreedingSow = async (
         await ensureSowTagNumberIsAvailable(tx, data.sow_tag_number, id);
       }
 
+      // TODO: Consider if we should validate this on update, if so look for a elegant way to do it JUST A HEADS UP FOR NOW
       const nextEntryDate =
         typeof data.entry_date === "string" || data.entry_date instanceof Date
           ? data.entry_date
@@ -130,6 +139,15 @@ export const updateBreedingSow = async (
           : currentSow.removal_date;
 
       ensureBreedingSowDatesAreConsistent(nextEntryDate, nextLastWeaningDate, nextRemovalDate);
+
+      if (typeof data.status === "string" && data.status !== currentSow.status) {
+        await ensureManualStatusChangeIsAllowed(
+          id,
+          currentSow.status,
+          data.status,
+          tx,
+        );
+      }
 
       return await tx.breedingsows.update({
         where: { sow_id: id },
@@ -152,7 +170,7 @@ export const updateBreedingSow = async (
 };
 
 /**
- * Deletes a breeding sow only when it has no mating events attached.
+ * Deletes a breeding sow only when it has no reproductive history attached.
  */
 export const deleteBreedingSow = async (id: number) => {
   try {
@@ -178,4 +196,98 @@ export const deleteBreedingSow = async (id: number) => {
 
     throw error;
   }
+};
+
+/**
+ * Deduplicates retire targets and protects the command from empty batches.
+ */
+const getUniqueBreedingSowIdsOrThrow = (sowIds: number[]) => {
+  const uniqueSowIds = Array.from(new Set(sowIds));
+
+  if (uniqueSowIds.length === 0) {
+    throw breedingSowErrors.invalidBreedingSowIds(sowIds);
+  }
+
+  return uniqueSowIds;
+};
+
+/**
+ * Loads every sow requested for retirement and fails before mutating data when any id is missing.
+ */
+const loadBreedingSowsForRetirement = async (
+  tx: Prisma.TransactionClient,
+  sowIds: number[],
+) => {
+  const sows = await tx.breedingsows.findMany({
+    where: { sow_id: { in: sowIds } },
+    select: {
+      sow_id: true,
+      entry_date: true,
+    },
+  });
+
+  if (sows.length !== sowIds.length) {
+    const foundIds = new Set(sows.map(({ sow_id }) => sow_id));
+    const missingSowIds = sowIds.filter((sowId) => !foundIds.has(sowId));
+    throw breedingSowErrors.breedingSowsNotFound(sowIds, missingSowIds);
+  }
+
+  return sows;
+};
+
+/**
+ * Keeps each sow's removal date after its own entry date before retiring the batch.
+ */
+const ensureRetirementDatesAreConsistent = (
+  sows: Array<{ sow_id: number; entry_date: Date }>,
+  removalDate: unknown,
+) => {
+  for (const sow of sows) {
+    if (isBeforeDate(removalDate, sow.entry_date)) {
+      throw breedingSowErrors.removalDateBeforeEntryDate(
+        sow.entry_date,
+        removalDate,
+      );
+    }
+  }
+};
+
+/**
+ * Retires one or many breeding sows while preserving reproductive history.
+ */
+export const retireBreedingSow = async (
+  ids: number[],
+  data: RetireBreedingSowInput,
+) => {
+  const uniqueSowIds = getUniqueBreedingSowIdsOrThrow(ids);
+
+  return await prisma.$transaction(async (tx) => {
+    const currentSows = await loadBreedingSowsForRetirement(tx, uniqueSowIds);
+    const removalDate = data.removal_date ?? new Date();
+
+    ensureRetirementDatesAreConsistent(currentSows, removalDate);
+
+    await tx.matingevents.updateMany({
+      where: {
+        sow_id: { in: uniqueSowIds },
+        pregnancy_result: {
+          in: [PREGNANCY_RESULTS.pendiente, PREGNANCY_RESULTS.positivo],
+        },
+      },
+      data: {
+        pregnancy_result: PREGNANCY_RESULTS.cancelado,
+      },
+    });
+
+    return await tx.breedingsows.updateMany({
+      where: { sow_id: { in: uniqueSowIds } },
+      data: {
+        status: BREEDING_SOW_STATUSES.retirada,
+        removal_date: removalDate,
+        ...(data.removal_reason !== undefined
+          ? { removal_reason: data.removal_reason }
+          : {}),
+      },
+    });
+  });
 };

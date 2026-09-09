@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import type { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import prisma from "../../prismaClient";
+import { BREEDING_SOW_STATUSES } from "../breedingSows/breedingSowsRules";
 import {
   getBlockingMatingEventBySowId,
   getPregnancyUpdateEvents,
@@ -10,13 +11,14 @@ import {
 import { matingEventErrors } from "./matingEventErrors";
 import {
   getSowStatusAfterDeletingMatingEvent,
+  getSowStatusForCreatedMatingEvent,
   isEmptySowStatus,
   isSupportedPregnancyResultTransition,
   parsePregnancyResult,
   getSowStatusTransition,
-  SOW_STATUS_LABELS,
   type PregnancyResult,
 } from "./pregnancyRules";
+
 
 const isPrismaRecordNotFoundError = (
   error: unknown,
@@ -128,7 +130,7 @@ const resolveSowStatusTransition = (
     return null;
   }
 
-  return SOW_STATUS_LABELS[nextStatusKey];
+  return BREEDING_SOW_STATUSES[nextStatusKey];
 };
 
 /**
@@ -147,7 +149,7 @@ const restoreSowStatusAfterDeletingPositiveEvent = async (
 
   await tx.breedingsows.update({
     where: { sow_id: sowId },
-    data: { status: SOW_STATUS_LABELS[nextStatusKey] },
+    data: { status: BREEDING_SOW_STATUSES[nextStatusKey] },
   });
 };
 
@@ -221,9 +223,20 @@ export const createMatingEvent = async (data: Prisma.matingeventsUncheckedCreate
       throw matingEventErrors.sowNotEmpty(data.sow_id, sow.status);
     }
 
-    return await tx.matingevents.create({
+    const newMatingEvent = await tx.matingevents.create({
       data,
     });
+
+    // The sow status is updated only when the new mating event has a pregnancy result that actually moves the sow.
+    const nextSowStatus = getSowStatusForCreatedMatingEvent(data.pregnancy_result ?? null);
+    if (nextSowStatus) {
+      await tx.breedingsows.update({
+        where: { sow_id: data.sow_id },
+        data: { status: nextSowStatus },
+      });
+    }
+
+    return newMatingEvent;
   });
 };
 

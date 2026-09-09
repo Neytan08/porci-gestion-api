@@ -126,6 +126,46 @@ router.post("/", asyncHandler(BreedingSowController.create.bind(BreedingSowContr
 
 /**
  * @swagger
+ * /breedingsows/{id}/validate-status-change:
+ *   post:
+ *     summary: Validate a proposed breeding sow status change
+ *     tags: [BreedingSows]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID of the breeding sow
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 example: "Gestación"
+ *     responses:
+ *       204:
+ *         description: The proposed status change is allowed
+ *       400:
+ *         description: Invalid request payload
+ *       404:
+ *         description: Breeding sow not found
+ *       409:
+ *         description: The proposed status change is blocked by an active reproductive workflow
+ */
+router.post(
+  "/:id/validate-status-change",
+  asyncHandler(BreedingSowController.validateStatusChange.bind(BreedingSowController)),
+);
+
+/**
+ * @swagger
  * /breedingsows/{id}:
  *   put:
  *     summary: Update an existing breeding sow
@@ -171,6 +211,46 @@ router.post("/", asyncHandler(BreedingSowController.create.bind(BreedingSowContr
  *         description: Breeding sow not found
  */
 router.put("/:id", asyncHandler(BreedingSowController.update.bind(BreedingSowController)));
+
+/**
+ * @swagger
+ * /breedingsows/retire:
+ *   patch:
+ *     summary: Retire one or many breeding sows
+ *     tags: [BreedingSows]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - sow_ids
+ *             properties:
+ *               sow_ids:
+ *                 oneOf:
+ *                   - type: integer
+ *                   - type: array
+ *                     items:
+ *                       type: integer
+ *                 example: [1, 2]
+ *               removal_date:
+ *                 type: string
+ *                 format: date
+ *                 example: "2026-06-17"
+ *               removal_reason:
+ *                 type: string
+ *                 example: "End of productive life"
+ *     responses:
+ *       200:
+ *         description: Breeding sows retired successfully
+ *       404:
+ *         description: One or more breeding sows were not found
+ */
+router.patch(
+  "/retire",
+  asyncHandler(BreedingSowController.retire.bind(BreedingSowController)),
+);
 
 /**
  * @swagger

@@ -1,5 +1,11 @@
 import type { Prisma } from "@prisma/client";
-import { createBoar, deleteBoar, updateBoar } from "./boarsCommands";
+import {
+  createBoar,
+  deleteBoar,
+  type RetireBoarInput,
+  retireBoar,
+  updateBoar,
+} from "./boarsCommands";
 import { getAllBoars, getBoarById, getBoarByNormalizedTagNumber } from "./boarsQueries";
 
 /**
@@ -25,6 +31,10 @@ class BoarsService {
 
   async delete(id: number) {
     return await deleteBoar(id);
+  }
+
+  async retire(ids: number[], data: RetireBoarInput) {
+    return await retireBoar(ids, data);
   }
 
   async checkBoarTagNumberExists(boarTagNumber: string) {

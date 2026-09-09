@@ -1,10 +1,18 @@
 import type { Request, Response } from "express";
-import { boarsSchema, boarsUpdateSchema } from "../schemas_validations/boars.schema";
+import {
+  boarsRetireSchema,
+  boarsSchema,
+  boarsUpdateSchema,
+} from "../schemas_validations/boars.schema";
 import { boarErrors } from "../services/boars/boarErrors";
 import BoarsService from "../services/boars/boarsService";
 import { calculateAge } from "../utils/getAgeFromDate";
 import logger from "../utils/logger";
-import { parsePositiveIdOrThrow, parseRequiredStringParamOrThrow } from "../utils/requestParsing";
+import {
+  parsePositiveIdOrThrow,
+  parsePositiveIdsOrThrow,
+  parseRequiredStringParamOrThrow,
+} from "../utils/requestParsing";
 
 class BoarsController {
   async getAll(_: Request, res: Response) {
@@ -80,6 +88,26 @@ class BoarsController {
       boarTagNumber: deleted.boar_tag_number,
     });
     res.status(204).send();
+  }
+
+  async retire(req: Request, res: Response) {
+    const parseResult = boarsRetireSchema.safeParse(req.body ?? {});
+
+    if (!parseResult.success) {
+      throw boarErrors.invalidRetirePayload(parseResult.error.issues);
+    }
+
+    const { boar_ids, ...retireData } = parseResult.data;
+    const boarIds = parsePositiveIdsOrThrow(boar_ids, boarErrors.invalidBoarIds);
+
+    const result = await BoarsService.retire(boarIds, retireData);
+
+    logger.info("Retired boars", {
+      boarIds,
+      retiredCount: result.count,
+      removalDate: retireData.removal_date ?? null,
+    });
+    res.json(result);
   }
 
   async checkBoarTagNumberExists(req: Request, res: Response) {

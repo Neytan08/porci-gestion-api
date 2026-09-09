@@ -159,6 +159,43 @@ router.put("/:id", asyncHandler(BoarsController.update.bind(BoarsController)));
 
 /**
  * @swagger
+ * /boars/retire:
+ *   patch:
+ *     summary: Retire one or many boars
+ *     tags: [Boars]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - boar_ids
+ *             properties:
+ *               boar_ids:
+ *                 oneOf:
+ *                   - type: integer
+ *                   - type: array
+ *                     items:
+ *                       type: integer
+ *                 example: [1, 2]
+ *               removal_date:
+ *                 type: string
+ *                 format: date
+ *                 example: "2026-06-17"
+ *               removal_reason:
+ *                 type: string
+ *                 example: "End of reproductive use"
+ *     responses:
+ *       200:
+ *         description: Boars retired successfully
+ *       404:
+ *         description: One or more boars were not found
+ */
+router.patch("/retire", asyncHandler(BoarsController.retire.bind(BoarsController)));
+
+/**
+ * @swagger
  * /boars/{id}:
  *   delete:
  *     summary: Delete a boar by ID

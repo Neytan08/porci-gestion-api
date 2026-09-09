@@ -1,13 +1,10 @@
 import type { Request, Response } from "express";
-import {
-  breedingSowsschema,
-  breedingSowsUpdateSchema,
-} from "../schemas_validations/breedingSows.schema";
+import { breedingSowRetireSchema, breedingSowSchema, breedingSowStatusChangeValidationSchema, breedingSowUpdateSchema } from "../schemas_validations/breedingSows.schema";
 import { breedingSowErrors } from "../services/breedingSows/breedingSowErrors";
 import { parseBreedingSowStatus } from "../services/breedingSows/breedingSowsRules";
 import BreedingSowsService from "../services/breedingSows/breedingSowsService";
 import logger from "../utils/logger";
-import { parsePositiveIdOrThrow, parseRequiredStringParamOrThrow } from "../utils/requestParsing";
+import { parsePositiveIdOrThrow, parsePositiveIdsOrThrow, parseRequiredStringParamOrThrow } from "../utils/requestParsing";
 
 class BreedingSowsController {
   async getAll(_: Request, res: Response) {
@@ -42,7 +39,7 @@ class BreedingSowsController {
   }
 
   async create(req: Request, res: Response) {
-    const parseResult = breedingSowsschema.safeParse(req.body);
+    const parseResult = breedingSowSchema.safeParse(req.body);
 
     if (!parseResult.success) {
       throw breedingSowErrors.invalidCreatePayload(parseResult.error.issues);
@@ -58,8 +55,27 @@ class BreedingSowsController {
     res.status(201).json(newSow);
   }
 
+  async validateStatusChange(req: Request, res: Response) {
+    const parseResult = breedingSowStatusChangeValidationSchema.safeParse(req.body);
+
+    if (!parseResult.success) {
+      throw breedingSowErrors.invalidStatusChangePayload(parseResult.error.issues);
+    }
+
+    const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
+      breedingSowErrors.invalidBreedingSowId(rawValue, "retrieve"),
+    );
+    await BreedingSowsService.validateStatusChange(id, parseResult.data.status);
+
+    logger.info("Validated breeding sow status change", {
+      sowId: id,
+      status: parseResult.data.status,
+    });
+    res.status(204).send();
+  }
+
   async update(req: Request, res: Response) {
-    const parseResult = breedingSowsUpdateSchema.safeParse(req.body);
+    const parseResult = breedingSowUpdateSchema.safeParse(req.body);
 
     if (!parseResult.success) {
       throw breedingSowErrors.invalidUpdatePayload(parseResult.error.issues);
@@ -91,6 +107,29 @@ class BreedingSowsController {
     res.status(204).send();
   }
 
+  async retire(req: Request, res: Response) {
+    const parseResult = breedingSowRetireSchema.safeParse(req.body ?? {});
+
+    if (!parseResult.success) {
+      throw breedingSowErrors.invalidRetirePayload(parseResult.error.issues);
+    }
+
+    const { sow_ids, ...retireData } = parseResult.data;
+    const sowIds = parsePositiveIdsOrThrow(
+      sow_ids,
+      breedingSowErrors.invalidBreedingSowIds,
+    );
+
+    const result = await BreedingSowsService.retire(sowIds, retireData);
+
+    logger.info("Retired breeding sows", {
+      sowIds,
+      retiredCount: result.count,
+      removalDate: retireData.removal_date ?? null,
+    });
+    res.json(result);
+  }
+
   async getAllByStatus(req: Request, res: Response) {
     const rawStatus = parseRequiredStringParamOrThrow(
       req.params.status,
@@ -102,7 +141,7 @@ class BreedingSowsController {
       throw breedingSowErrors.invalidStatus(rawStatus);
     }
 
-    const sows = await BreedingSowsService.getAllByStatus(status);
+    const sows = await BreedingSowsService.getAllBreedingSowsByStatus(status);
 
     logger.info("Fetched breeding sows by status", { status, count: sows.length });
     res.json(sows);

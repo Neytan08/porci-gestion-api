@@ -4,15 +4,18 @@ import ApiError, { type ApiErrorLogContext } from "../../utils/apiError";
 export const BREEDING_SOW_ERROR_CODES = {
   BREEDING_SOW_BODY_INVALID: "BREEDING_SOW_BODY_INVALID",
   BREEDING_SOW_UPDATE_BODY_INVALID: "BREEDING_SOW_UPDATE_BODY_INVALID",
+  BREEDING_SOW_RETIRE_BODY_INVALID: "BREEDING_SOW_RETIRE_BODY_INVALID",
   BREEDING_SOW_ID_INVALID: "BREEDING_SOW_ID_INVALID",
   BREEDING_SOW_TAG_NUMBER_INVALID: "BREEDING_SOW_TAG_NUMBER_INVALID",
   BREEDING_SOW_TAG_NUMBER_ALREADY_EXISTS: "BREEDING_SOW_TAG_NUMBER_ALREADY_EXISTS",
   BREEDING_SOW_NOT_FOUND: "BREEDING_SOW_NOT_FOUND",
   BREEDING_SOW_BREED_NOT_FOUND: "BREEDING_SOW_BREED_NOT_FOUND",
   BREEDING_SOW_STATUS_INVALID: "BREEDING_SOW_STATUS_INVALID",
+  BREEDING_SOW_STATUS_CHANGE_BODY_INVALID: "BREEDING_SOW_STATUS_CHANGE_BODY_INVALID",
+  BREEDING_SOW_STATUS_CHANGE_BLOCKED_ACTIVE_MATING_EVENT: "BREEDING_SOW_STATUS_CHANGE_BLOCKED_ACTIVE_MATING_EVENT",
+  BREEDING_SOW_STATUS_CHANGE_BLOCKED_ACTIVE_FARROWING: "BREEDING_SOW_STATUS_CHANGE_BLOCKED_ACTIVE_FARROWING",
   BREEDING_SOW_REMOVAL_DATE_BEFORE_ENTRY_DATE: "BREEDING_SOW_REMOVAL_DATE_BEFORE_ENTRY_DATE",
-  BREEDING_SOW_LAST_WEANING_DATE_BEFORE_ENTRY_DATE:
-    "BREEDING_SOW_LAST_WEANING_DATE_BEFORE_ENTRY_DATE",
+  BREEDING_SOW_LAST_WEANING_DATE_BEFORE_ENTRY_DATE: "BREEDING_SOW_LAST_WEANING_DATE_BEFORE_ENTRY_DATE",
   BREEDING_SOW_HAS_MATING_EVENTS: "BREEDING_SOW_HAS_MATING_EVENTS",
 } as const;
 
@@ -51,13 +54,43 @@ export const breedingSowErrors = {
       { issues },
     ),
 
-  invalidBreedingSowId: (rawValue: unknown, operation: "retrieve" | "update" | "delete") =>
+  invalidRetirePayload: (issues: ZodIssue[]) =>
+    createBreedingSowError(
+      400,
+      BREEDING_SOW_ERROR_CODES.BREEDING_SOW_RETIRE_BODY_INVALID,
+      "The request body contains invalid fields for retiring the breeding sow.",
+      "Cannot retire breeding sow",
+      { issues },
+    ),
+
+  invalidStatusChangePayload: (issues: ZodIssue[]) =>
+    createBreedingSowError(
+      400,
+      BREEDING_SOW_ERROR_CODES.BREEDING_SOW_STATUS_CHANGE_BODY_INVALID,
+      "The request body must contain a valid breeding sow status.",
+      "Cannot validate breeding sow status change",
+      { issues },
+    ),
+
+  invalidBreedingSowId: (
+    rawValue: unknown,
+    operation: "retrieve" | "update" | "delete" | "retire",
+  ) =>
     createBreedingSowError(
       400,
       BREEDING_SOW_ERROR_CODES.BREEDING_SOW_ID_INVALID,
       "The breeding sow id must be a positive integer.",
       `Cannot ${operation} breeding sow`,
       { sowId: rawValue },
+    ),
+
+  invalidBreedingSowIds: (rawValue: unknown) =>
+    createBreedingSowError(
+      400,
+      BREEDING_SOW_ERROR_CODES.BREEDING_SOW_ID_INVALID,
+      "The breeding sow ids must be positive integers.",
+      "Cannot retire breeding sows",
+      { sowIds: rawValue },
     ),
 
   invalidSowTagNumber: (rawValue: unknown) =>
@@ -78,13 +111,25 @@ export const breedingSowErrors = {
       { status },
     ),
 
-  breedingSowNotFound: (sowId: number, operation: "retrieve" | "update" | "delete") =>
+  breedingSowNotFound: (
+    sowId: number,
+    operation: "retrieve" | "update" | "delete" | "retire",
+  ) =>
     createBreedingSowError(
       404,
       BREEDING_SOW_ERROR_CODES.BREEDING_SOW_NOT_FOUND,
       "The breeding sow was not found.",
       `Cannot ${operation} breeding sow`,
       { sowId },
+    ),
+
+  breedingSowsNotFound: (sowIds: number[], missingSowIds: number[]) =>
+    createBreedingSowError(
+      404,
+      BREEDING_SOW_ERROR_CODES.BREEDING_SOW_NOT_FOUND,
+      "One or more breeding sows were not found.",
+      "Cannot retire breeding sows",
+      { sowIds, missingSowIds },
     ),
 
   breedNotFound: (breedId: number) =>
@@ -127,8 +172,34 @@ export const breedingSowErrors = {
     createBreedingSowError(
       409,
       BREEDING_SOW_ERROR_CODES.BREEDING_SOW_HAS_MATING_EVENTS,
-      "The breeding sow cannot be deleted because it has mating events associated.",
+      "The breeding sow cannot be deleted because it has reproductive history. Mark it as retired instead.",
       "Cannot delete breeding sow",
       { sowId, matingEventsCount },
+    ),
+
+  manualStatusChangeBlockedByMatingEvent: (
+    sowId: number,
+    currentStatus: string | null,
+    newStatus: string,
+  ) =>
+    createBreedingSowError(
+      409,
+      BREEDING_SOW_ERROR_CODES.BREEDING_SOW_STATUS_CHANGE_BLOCKED_ACTIVE_MATING_EVENT,
+      "The breeding sow status cannot be changed manually because there is an active mating event with pending or positive pregnancy status. Finish the mating event workflow first.",
+      "Cannot update breeding sow status during active mating event",
+      { sowId, currentStatus, newStatus },
+    ),
+
+  manualStatusChangeBlockedByFarrowing: (
+    sowId: number,
+    currentStatus: string | null,
+    newStatus: string,
+  ) =>
+    createBreedingSowError(
+      409,
+      BREEDING_SOW_ERROR_CODES.BREEDING_SOW_STATUS_CHANGE_BLOCKED_ACTIVE_FARROWING,
+      "The breeding sow status cannot be changed manually because there is an active farrowing without weaned piglets. Finish the farrowing/weaning workflow first.",
+      "Cannot update breeding sow status during active farrowing",
+      { sowId, currentStatus, newStatus },
     ),
 };

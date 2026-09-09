@@ -1,11 +1,20 @@
 import type { Prisma } from "@prisma/client";
-import { createBreedingSow, deleteBreedingSow, updateBreedingSow } from "./breedingSowsCommands";
+import {
+  createBreedingSow,
+  deleteBreedingSow,
+  type RetireBreedingSowInput,
+  retireBreedingSow,
+  updateBreedingSow,
+} from "./breedingSowsCommands";
 import {
   getAllBreedingSows,
   getBreedingSowById,
   getBreedingSowByNormalizedTagNumber,
+  getBreedingSowStatusById,
   getBreedingSowsByStatus,
 } from "./breedingSowsQueries";
+import { ensureManualStatusChangeIsAllowed } from "./breedingSowsStatusValidation";
+import { breedingSowErrors } from "./breedingSowErrors";
 
 /**
  * Keeps the public breeding-sows service API stable while delegating
@@ -33,11 +42,25 @@ class BreedingSowsService {
     return await updateBreedingSow(id, data);
   }
 
+  async validateStatusChange(id: number, status: string) {
+    const sow = await getBreedingSowStatusById(id);
+
+    if (!sow) {
+      throw breedingSowErrors.breedingSowNotFound(id, "retrieve");
+    }
+
+    return await ensureManualStatusChangeIsAllowed(id, sow.status, status);
+  }
+
   async delete(id: number) {
     return await deleteBreedingSow(id);
   }
 
-  async getAllByStatus(status: string) {
+  async retire(ids: number[], data: RetireBreedingSowInput) {
+    return await retireBreedingSow(ids, data);
+  }
+
+  async getAllBreedingSowsByStatus(status: string) {
     return await getBreedingSowsByStatus(status);
   }
 }

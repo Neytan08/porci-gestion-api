@@ -1,8 +1,9 @@
 export const BREEDING_SOW_STATUSES = {
-  gestacion: "Gestacion",
-  lactancia: "Lactancia",
   vacia: "Vacia",
+  gestacion: "Gestación",
+  lactancia: "Lactancia",
   noProductiva: "No Productiva",
+  retirada: "Retirada",
 } as const;
 
 export type BreedingSowStatus = (typeof BREEDING_SOW_STATUSES)[keyof typeof BREEDING_SOW_STATUSES];
@@ -33,6 +34,8 @@ export const parseBreedingSowStatus = (status: string): BreedingSowStatus | null
       return BREEDING_SOW_STATUSES.vacia;
     case "no productiva":
       return BREEDING_SOW_STATUSES.noProductiva;
+    case "retirada":
+      return BREEDING_SOW_STATUSES.retirada;
     default:
       return null;
   }

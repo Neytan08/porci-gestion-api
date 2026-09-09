@@ -4,6 +4,7 @@ import ApiError, { type ApiErrorLogContext } from "../../utils/apiError";
 export const BOAR_ERROR_CODES = {
   BOAR_BODY_INVALID: "BOAR_BODY_INVALID",
   BOAR_UPDATE_BODY_INVALID: "BOAR_UPDATE_BODY_INVALID",
+  BOAR_RETIRE_BODY_INVALID: "BOAR_RETIRE_BODY_INVALID",
   BOAR_ID_INVALID: "BOAR_ID_INVALID",
   BOAR_TAG_NUMBER_INVALID: "BOAR_TAG_NUMBER_INVALID",
   BOAR_TAG_NUMBER_ALREADY_EXISTS: "BOAR_TAG_NUMBER_ALREADY_EXISTS",
@@ -47,13 +48,34 @@ export const boarErrors = {
       { issues },
     ),
 
-  invalidBoarId: (rawValue: unknown, operation: "retrieve" | "update" | "delete") =>
+  invalidRetirePayload: (issues: ZodIssue[]) =>
+    createBoarError(
+      400,
+      BOAR_ERROR_CODES.BOAR_RETIRE_BODY_INVALID,
+      "The request body contains invalid fields for retiring the boar.",
+      "Cannot retire boar",
+      { issues },
+    ),
+
+  invalidBoarId: (
+    rawValue: unknown,
+    operation: "retrieve" | "update" | "delete" | "retire",
+  ) =>
     createBoarError(
       400,
       BOAR_ERROR_CODES.BOAR_ID_INVALID,
       "The boar id must be a positive integer.",
       `Cannot ${operation} boar`,
       { boarId: rawValue },
+    ),
+
+  invalidBoarIds: (rawValue: unknown) =>
+    createBoarError(
+      400,
+      BOAR_ERROR_CODES.BOAR_ID_INVALID,
+      "The boar ids must be positive integers.",
+      "Cannot retire boars",
+      { boarIds: rawValue },
     ),
 
   invalidBoarTagNumber: (rawValue: unknown) =>
@@ -65,13 +87,22 @@ export const boarErrors = {
       { boarTagNumber: rawValue },
     ),
 
-  boarNotFound: (boarId: number, operation: "retrieve" | "update" | "delete") =>
+  boarNotFound: (boarId: number, operation: "retrieve" | "update" | "delete" | "retire") =>
     createBoarError(
       404,
       BOAR_ERROR_CODES.BOAR_NOT_FOUND,
       "The boar was not found.",
       `Cannot ${operation} boar`,
       { boarId },
+    ),
+
+  boarsNotFound: (boarIds: number[], missingBoarIds: number[]) =>
+    createBoarError(
+      404,
+      BOAR_ERROR_CODES.BOAR_NOT_FOUND,
+      "One or more boars were not found.",
+      "Cannot retire boars",
+      { boarIds, missingBoarIds },
     ),
 
   breedNotFound: (breedId: number) =>

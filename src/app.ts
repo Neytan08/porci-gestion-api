@@ -5,13 +5,13 @@ import { errorHandler } from "./middlewares/errorHandler";
 import boarsRoutes from "./routes/boars.route";
 import breedingSowRoutes from "./routes/breedingSows.route";
 import breedRoutes from "./routes/breeds.route";
+import farrowingsRoutes from "./routes/farrowings.route";
 import matingEventsRoutes from "./routes/matingEvents.route";
 import vaccinesRoutes from "./routes/vaccines.route";
 import vaccineTypesRoutes from "./routes/vaccineTypes.route";
 import { setupSwagger } from "./swagger";
 import logger from "./utils/logger";
 
-// import farrowingsRoutes from "./routes/farrowings.route";
 // import notificationsRoutes from "./routes/notifications.route";
 const app = express();
 
@@ -40,7 +40,7 @@ app.use(express.json());
 // Routes
 app.use("/api/breeds", breedRoutes);
 app.use("/api/breedingsows", breedingSowRoutes);
-// app.use("/api/farrowings", farrowingsRoutes);
+app.use("/api/farrowings", farrowingsRoutes); 
 app.use("/api/boars", boarsRoutes);
 app.use("/api/matingevents", matingEventsRoutes);
 // app.use("/api/notifications", notificationsRoutes);
