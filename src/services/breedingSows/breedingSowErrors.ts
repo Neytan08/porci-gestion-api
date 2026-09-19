@@ -198,7 +198,7 @@ export const breedingSowErrors = {
     createBreedingSowError(
       409,
       BREEDING_SOW_ERROR_CODES.BREEDING_SOW_STATUS_CHANGE_BLOCKED_ACTIVE_FARROWING,
-      "The breeding sow status cannot be changed manually because there is an active farrowing without weaned piglets. Finish the farrowing/weaning workflow first.",
+      "The breeding sow status cannot be changed manually because there is a farrowing with no recorded weaning date. Finish the farrowing/weaning workflow first.",
       "Cannot update breeding sow status during active farrowing",
       { sowId, currentStatus, newStatus },
     ),

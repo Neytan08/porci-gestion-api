@@ -7,9 +7,10 @@
     "build": "tsc -p .",
     "dev": "nodemon src/app.ts",
     "start": "node dist/app.js",
-    "generate": "npx prisma generate --schema=src/prisma/schema.prisma",
-    "migrate": "npx prisma migrate dev --schema=src/prisma/schema.prisma",
     "db:pull": "npx prisma db pull --schema=src/prisma/schema.prisma",
+    "generate": "npx prisma generate --schema=src/prisma/schema.prisma",
+    "db:sync": "npm run db:pull && npm run generate",
+    "migrate": "npx prisma migrate dev --schema=src/prisma/schema.prisma",
     "db:reset": "npx prisma migrate reset --force --skip-seed --schema=src/prisma/schema.prisma",
     "format": "npx biome check --write ."
   },

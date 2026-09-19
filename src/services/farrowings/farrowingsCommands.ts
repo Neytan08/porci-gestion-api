@@ -1,14 +1,16 @@
 import type { Prisma } from "@prisma/client";
 import prisma from "../../prismaClient";
+import type { WeanFarrowingInput } from "../../schemas_validations/farrowings.schema";
 import { isPrismaRecordNotFoundError } from "../../utils/prismaErrors";
-import { BREEDING_SOW_STATUSES } from "../breedingSows/breedingSowsRules";
+import { BREEDING_SOW_STATUSES, isBeforeDate } from "../breedingSows/breedingSowsRules";
 import { getBlockingMatingEventBySowId, getSowByIdWithStatus } from "../matingEvents/matingEventsQueries";
 import { PREGNANCY_RESULTS } from "../matingEvents/pregnancyRules";
 import { farrowingErrors } from "./farrowingErrors";
+import { getFarrowingById } from "./farrowingsQueries";
 
 export type CreateFarrowingInput = Omit<
   Prisma.farrowingsUncheckedCreateInput,
-  "mating_id" | "weaning_date" | "live_births" | "weaned_piglets"
+  "mating_id" | "weaning_date" | "live_births" | "weaned_piglets" | "weaned_date"
 >;
 
 /**
@@ -66,22 +68,43 @@ export const createFarrowing = async (data: CreateFarrowingInput) => {
 };
 
 /**
- * Updates direct farrowing fields. When the farrowing date changes, the weaning
- * date is recalculated because it is derived business data, not client input.
+ * Records actual weaning and moves the sow from lactation to empty together..
  */
-export const updateFarrowing = async (id: number, data: Prisma.farrowingsUncheckedUpdateInput) => {
-  try {
-    return await prisma.farrowings.update({
-      where: { farrowing_id: id },
-      data: data,
-    });
-  } catch (error) {
-    if (isPrismaRecordNotFoundError(error)) {
-      throw farrowingErrors.farrowingNotFound(id, "update");
+export const weanFarrowing = async (id: number, data: WeanFarrowingInput) => {
+  return await prisma.$transaction(async (tx) => {
+    const farrowing = await getFarrowingById(id, tx);
+    if (!farrowing) {
+      throw farrowingErrors.farrowingNotFound(id, "wean");
+    }
+    if (farrowing.weaned_date !== null) {
+      throw farrowingErrors.alreadyWeaned(id);
     }
 
-    throw error;
-  }
+    const weanedDate = new Date(data.weaned_date);
+    if (isBeforeDate(weanedDate, farrowing.farrowing_date)) {
+      throw farrowingErrors.invalidWeanDate(id);
+    }
+    if (farrowing.breedingsows.status !== BREEDING_SOW_STATUSES.lactancia) {
+      throw farrowingErrors.sowNotLactating(farrowing.sow_id, farrowing.breedingsows.status);
+    }
+
+    const updatedFarrowing = await tx.farrowings.update({
+      where: {
+        farrowing_id: id,
+        weaned_date: null,
+        sow_id: farrowing.sow_id,
+        farrowing_date: farrowing.farrowing_date,
+      },
+      data: { weaned_date: weanedDate, weaned_piglets: data.weaned_piglets },
+    });
+
+    await tx.breedingsows.update({
+      where: { sow_id: farrowing.sow_id, status: BREEDING_SOW_STATUSES.lactancia },
+      data: { status: BREEDING_SOW_STATUSES.vacia, last_weaning_date: weanedDate },
+    });
+
+    return updatedFarrowing;
+  });
 };
 
 /**

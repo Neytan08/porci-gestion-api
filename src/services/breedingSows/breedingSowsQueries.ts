@@ -147,11 +147,11 @@ export const getActiveFarrowingBySowId = async (
   return await queryClient.farrowings.findFirst({
     where: {
       sow_id: sowId,
-      weaned_piglets: 0,
+      weaned_date: null,
     },
     select: {
       farrowing_id: true,
-      weaned_piglets: true,
+      weaned_date: true,
     },
     orderBy: {
       farrowing_id: "desc",

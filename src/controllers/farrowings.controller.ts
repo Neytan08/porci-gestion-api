@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { farrowingsSchema, farrowingUpdateSchema } from "../schemas_validations/farrowings.schema";
+import { farrowingsSchema, farrowingWeanSchema } from "../schemas_validations/farrowings.schema";
 import { farrowingErrors } from "../services/farrowings/farrowingErrors";
 import FarrowingsService from "../services/farrowings/farrowingsService";
 import logger from "../utils/logger";
@@ -42,21 +42,42 @@ class FarrowingsController {
         res.status(201).json(newFarrowing);
     }
 
-    async update(req: Request, res: Response) {
-        const parseResult = farrowingUpdateSchema.safeParse(req.body);
+    // async update(req: Request, res: Response) {
+    //     const parseResult = farrowingUpdateSchema.safeParse(req.body);
+
+    //     if (!parseResult.success) {
+    //         throw farrowingErrors.invalidUpdatePayload(parseResult.error.issues);
+    //     }
+
+    //     const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
+    //         farrowingErrors.invalidFarrowingId(rawValue, "update"),
+    //     );
+    //     const updated = await FarrowingsService.update(id, parseResult.data);
+    //     logger.info("Updated farrowing", {
+    //         farrowingId: updated.farrowing_id,
+    //         sowId: updated.sow_id,
+    //         matingId: updated.mating_id,
+    //     });
+    //     res.json(updated);
+    // }
+
+    /** Validates the request before completing the weaning and sow status transaction. */
+    async wean(req: Request, res: Response) {
+        const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
+            farrowingErrors.invalidFarrowingId(rawValue, "wean"),
+        );
+        const parseResult = farrowingWeanSchema.safeParse(req.body);
 
         if (!parseResult.success) {
-            throw farrowingErrors.invalidUpdatePayload(parseResult.error.issues);
+            throw farrowingErrors.invalidWeanPayload(parseResult.error.issues);
         }
 
-        const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
-            farrowingErrors.invalidFarrowingId(rawValue, "update"),
-        );
-        const updated = await FarrowingsService.update(id, parseResult.data);
-        logger.info("Updated farrowing", {
+        const updated = await FarrowingsService.wean(id, parseResult.data);
+        logger.info("Weaned farrowing", {
             farrowingId: updated.farrowing_id,
             sowId: updated.sow_id,
-            matingId: updated.mating_id,
+            weanedDate: updated.weaned_date,
+            weanedPiglets: updated.weaned_piglets,
         });
         res.json(updated);
     }

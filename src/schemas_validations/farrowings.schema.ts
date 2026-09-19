@@ -10,7 +10,7 @@ const dateStringSchema = (fieldName: string) =>
 const nonNegativeIntegerSchema = z.number().int().nonnegative();
 const optionalCountWithZeroDefault = nonNegativeIntegerSchema.optional().default(0);
 
-// Farrowing creation does not accept weaning_date because it is derived from farrowing_date.
+// The planned weaning_date is derived; actual weaning fields belong to the wean endpoint.
 export const farrowingsSchema = z.object({
   sow_id: z.number().int().positive(),
   farrowing_date: dateStringSchema("farrowing_date"),
@@ -21,14 +21,15 @@ export const farrowingsSchema = z.object({
   notes: z.string().optional(),
 });
 
-// Updates can change farrowing_date, but weaning_date remains derived data.
-export const farrowingUpdateSchema = z.object({
-  sow_id: z.number().int().positive().optional(),
-  farrowing_date: dateStringSchema("farrowing_date").optional(),
-  male_piglets: nonNegativeIntegerSchema.optional(),
-  female_piglets: nonNegativeIntegerSchema.optional(),
-  still_births: nonNegativeIntegerSchema.optional(),
-  mummies: nonNegativeIntegerSchema.optional(),
-  weaned_piglets: nonNegativeIntegerSchema.optional(),
-  notes: z.string().optional(),
+// Partial schema allows optional fields for updates
+// export const farrowingUpdateSchema = farrowingsSchema.partial();
+
+// Both values are required only when completing the weaning workflow. Zero is valid.
+export const farrowingWeanSchema = z.object({
+  weaned_date: z.string().refine((date) => !Number.isNaN(Date.parse(date)), {
+      message: "Invalid weaned_date format",
+    }),
+  weaned_piglets: nonNegativeIntegerSchema,
 });
+
+export type WeanFarrowingInput = z.infer<typeof farrowingWeanSchema>;

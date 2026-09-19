@@ -11,7 +11,7 @@ type ManualStatusChangeQueryClient = Pick<
 
 /**
  * Manual sow status changes are blocked while a MatingEvent (Pending/Positive)
- * or active Farrowing (weaned_piglets === 0) controls the reproductive lifecycle.
+ * or active Farrowing (weaned_date === null) controls the reproductive lifecycle.
  */
 export const ensureManualStatusChangeIsAllowed = async (
   sowId: number,

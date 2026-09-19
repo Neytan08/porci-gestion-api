@@ -1,5 +1,5 @@
-import type { Prisma } from "@prisma/client";
-import { type CreateFarrowingInput, createFarrowing, deleteFarrowing, updateFarrowing } from "./farrowingsCommands";
+import type { WeanFarrowingInput } from "../../schemas_validations/farrowings.schema";
+import { type CreateFarrowingInput, createFarrowing, deleteFarrowing, weanFarrowing } from "./farrowingsCommands";
 import { getAllFarrowings, getFarrowingById, getFarrowingsBySow } from "./farrowingsQueries";
 
 /**
@@ -19,8 +19,8 @@ class FarrowingsService {
     return await createFarrowing(data);
   }
 
-  async update(id: number, data: Prisma.farrowingsUncheckedUpdateInput) {
-    return await updateFarrowing(id, data);
+  async wean(id: number, data: WeanFarrowingInput) {
+    return await weanFarrowing(id, data);
   }
 
   async delete(id: number) {

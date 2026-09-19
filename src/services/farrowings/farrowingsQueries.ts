@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import prisma from "../../prismaClient";
 
 /**
@@ -13,8 +14,11 @@ export const getAllFarrowings = async () => {
 /**
  * Retrieves one farrowing by id with its related sow.
  */
-export const getFarrowingById = async (id: number) => {
-  return await prisma.farrowings.findUnique({
+export const getFarrowingById = async (
+  id: number,
+  queryClient: Pick<Prisma.TransactionClient, "farrowings"> = prisma,
+) => {
+  return await queryClient.farrowings.findUnique({
     where: { farrowing_id: id },
     include: { breedingsows: true },
   });

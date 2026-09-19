@@ -77,9 +77,6 @@ router.get("/:id", asyncHandler(FarrowingsController.getById.bind(FarrowingsCont
  *               mummies:
  *                 type: integer
  *                 example: 0
- *               weaned_piglets:
- *                 type: integer
- *                 example: 10
  *               notes:
  *                 type: string
  *                 example: "Normal farrowing, no complications"
@@ -136,7 +133,51 @@ router.post("/", asyncHandler(FarrowingsController.create.bind(FarrowingsControl
  *       404:
  *         description: Farrowing record not found
  */
-router.put("/:id", asyncHandler(FarrowingsController.update.bind(FarrowingsController)));
+// router.put("/:id", asyncHandler(FarrowingsController.update.bind(FarrowingsController)));
+
+/**
+ * @swagger
+ * /farrowings/{id}/wean:
+ *   patch:
+ *     summary: Record weaning and move the sow from lactation to empty
+ *     description: Saves the actual weaned_date and weaned_piglets and updates the sow's last_weaning_date in one transaction. The planned weaning_date is unchanged. Both body fields are required only for this operation.
+ *     tags: [Farrowings]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: ID of the farrowing to wean
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [weaned_date, weaned_piglets]
+ *             properties:
+ *               weaned_date:
+ *                 type: string
+ *                 format: date
+ *                 description: Actual weaning date, on or after the farrowing date
+ *                 example: "2026-09-10"
+ *               weaned_piglets:
+ *                 type: integer
+ *                 minimum: 0
+ *                 example: 10
+ *     responses:
+ *       200:
+ *         description: Updated farrowing. The sow is now empty and her last weaning date is recorded.
+ *       400:
+ *         description: Invalid identifier, missing or invalid body fields, or weaning date before farrowing
+ *       404:
+ *         description: Farrowing not found or an update no longer matches the required farrowing or sow state
+ *       409:
+ *         description: Already weaned or sow is not lactating
+ */
+router.patch("/:id/wean", asyncHandler(FarrowingsController.wean.bind(FarrowingsController)));
 
 /**
  * @swagger
