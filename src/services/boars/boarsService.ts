@@ -1,8 +1,7 @@
-import type { Prisma } from "@prisma/client";
+import type { CreateBoarInput, RetireBoarInput, UpdateBoarInput } from "./boarsTypes";
 import {
   createBoar,
   deleteBoar,
-  type RetireBoarInput,
   retireBoar,
   updateBoar,
 } from "./boarsCommands";
@@ -21,11 +20,11 @@ class BoarsService {
     return await getBoarById(id);
   }
 
-  async create(data: Prisma.boarsUncheckedCreateInput) {
+  async create(data: CreateBoarInput) {
     return await createBoar(data);
   }
 
-  async update(id: number, data: Prisma.boarsUncheckedUpdateInput) {
+  async update(id: number, data: UpdateBoarInput) {
     return await updateBoar(id, data);
   }
 

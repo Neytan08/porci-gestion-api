@@ -5,13 +5,14 @@
  */
 export function calculateAge(birthDate: Date): { years: number; months: number } {
   const today = new Date();
-  let years = today.getFullYear() - birthDate.getFullYear();
-  let months = today.getMonth() - birthDate.getMonth();
+  const completedMonths =
+    (today.getFullYear() - birthDate.getUTCFullYear()) * 12 +
+    today.getMonth() -
+    birthDate.getUTCMonth() -
+    (today.getDate() < birthDate.getUTCDate() ? 1 : 0);
 
-  if (months < 0) {
-    years -= 1;
-    months += 12;
-  }
-
-  return { years, months };
+  return {
+    years: Math.floor(completedMonths / 12),
+    months: ((completedMonths % 12) + 12) % 12,
+  };
 }

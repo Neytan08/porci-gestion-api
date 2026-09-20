@@ -1,6 +1,8 @@
 import type { Prisma } from "@prisma/client";
 import type { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import prisma from "../../prismaClient";
+import { getBoarStateForAssignment } from "../boars/boarsQueries";
+import { isActiveBoar } from "../boars/boarsRules";
 import { BREEDING_SOW_STATUSES } from "../breedingSows/breedingSowsRules";
 import {
   getBlockingMatingEventBySowId,
@@ -203,10 +205,14 @@ const ensureSowHasNoBlockingMatingEventOrThrow = async (
   );
 };
 
-/**
- * Creates a mating event only when the sow is empty and does not already have
- * another active mating event in pending or positive status.
- */
+/** Rejects a retired boar while locking its row against concurrent retirement. */
+const ensureBoarCanBeAssigned = async (tx: Prisma.TransactionClient, boarId: number) => {
+  const boar = await getBoarStateForAssignment(boarId, tx);
+  if (!boar) throw matingEventErrors.boarNotFound(boarId);
+  if (!isActiveBoar(boar)) throw matingEventErrors.boarRetired(boarId);
+};
+
+/** Creates a mating event when the sow and selected boar are eligible. */
 export const createMatingEvent = async (data: Prisma.matingeventsUncheckedCreateInput) => {
   return await prisma.$transaction(async (tx) => {
     const sow = await getSowByIdWithStatus(data.sow_id, tx);
@@ -222,6 +228,8 @@ export const createMatingEvent = async (data: Prisma.matingeventsUncheckedCreate
     if (!sow.status || !isEmptySowStatus(sow.status)) {
       throw matingEventErrors.sowNotEmpty(data.sow_id, sow.status);
     }
+
+    if (data.boar_id != null) await ensureBoarCanBeAssigned(tx, data.boar_id);
 
     const newMatingEvent = await tx.matingevents.create({
       data,
@@ -243,11 +251,11 @@ export const createMatingEvent = async (data: Prisma.matingeventsUncheckedCreate
 /**
  * Persists direct field changes on an existing mating event.
  */
-export const updateMatingEvent = async (id: number, data: Prisma.matingeventsUpdateInput) => {
+export const updateMatingEvent = async (id: number, data: Prisma.matingeventsUncheckedUpdateInput) => {
   try {
-    return await prisma.matingevents.update({
-      where: { mating_id: id },
-      data,
+    return await prisma.$transaction(async (tx) => {
+      if (typeof data.boar_id === "number") await ensureBoarCanBeAssigned(tx, data.boar_id);
+      return await tx.matingevents.update({ where: { mating_id: id }, data });
     });
   } catch (error) {
     if (isPrismaRecordNotFoundError(error)) {

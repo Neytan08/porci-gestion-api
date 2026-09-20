@@ -1,33 +1,36 @@
 import { z } from "zod";
+import { normalizeBoarTagNumber } from "../services/boars/boarsRules";
+import { parseCalendarDateInput } from "../utils/calendarDateInput";
 
 const positiveIdSchema = z.number().int().positive();
+const dateInputSchema = z.string().transform((value, context) => {
+  const date = parseCalendarDateInput(value);
+  if (!date) {
+    context.addIssue({
+      code: "custom",
+      message: "Expected M/D/YYYY, YYYY-MM-DD, or an ISO 8601 timestamp with an offset",
+    });
+    return z.NEVER;
+  }
+  return date;
+});
 
-// Boars schema validation using Zod
+// Ignore response-only fields when a client sends a loaded boar back for editing.
 export const boarsSchema = z.object({
-  boar_tag_number: z.string().min(1).max(50),
-  breed_id: z.number().int().positive(),
+  boar_tag_number: z.string().max(50).refine((tag) => normalizeBoarTagNumber(tag).length > 0, {
+    message: "The boar tag number cannot be blank",
+  }),
+  breed_id: positiveIdSchema,
   weight: z.number().nullable().optional(),
   length: z.number().nullable().optional(),
-  birth_date: z
-    .string()
-    .refine((date) => !isNaN(Date.parse(date)), { message: "Invalid birth_date format" }),
-  removal_date: z
-    .string()
-    .refine((date) => !isNaN(Date.parse(date)), { message: "Invalid removal_date format" })
-    .nullable()
-    .optional(),
-  removal_reason: z.string().nullable().optional(),
+  birth_date: dateInputSchema,
   description: z.string().nullable().optional(),
 });
 
-// Partial schema allows optional fields for updates
 export const boarsUpdateSchema = boarsSchema.partial();
 
-export const boarsRetireSchema = z.object({
+export const boarsRetireSchema = z.strictObject({
   boar_ids: z.union([positiveIdSchema, z.array(positiveIdSchema).nonempty()]),
-  removal_date: z
-    .string()
-    .refine((date) => !isNaN(Date.parse(date)), { message: "Invalid removal_date format" })
-    .optional(),
-  removal_reason: z.string().nullable().optional(),
+  removal_date: dateInputSchema,
+  removal_reason: z.string().trim().min(1),
 });

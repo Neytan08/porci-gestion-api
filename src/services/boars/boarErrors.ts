@@ -12,6 +12,7 @@ export const BOAR_ERROR_CODES = {
   BOAR_BREED_NOT_FOUND: "BOAR_BREED_NOT_FOUND",
   BOAR_REMOVAL_DATE_BEFORE_BIRTH_DATE: "BOAR_REMOVAL_DATE_BEFORE_BIRTH_DATE",
   BOAR_HAS_MATING_EVENTS: "BOAR_HAS_MATING_EVENTS",
+  BOAR_ALREADY_RETIRED: "BOAR_ALREADY_RETIRED",
 } as const;
 
 type BoarErrorCode = (typeof BOAR_ERROR_CODES)[keyof typeof BOAR_ERROR_CODES];
@@ -103,6 +104,15 @@ export const boarErrors = {
       "One or more boars were not found.",
       "Cannot retire boars",
       { boarIds, missingBoarIds },
+    ),
+
+  alreadyRetired: (boarIds: number[]) =>
+    createBoarError(
+      409,
+      BOAR_ERROR_CODES.BOAR_ALREADY_RETIRED,
+      "Retired boars cannot be changed or retired again.",
+      "Cannot change retired boars",
+      { boarIds },
     ),
 
   breedNotFound: (breedId: number) =>

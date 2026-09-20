@@ -26,6 +26,7 @@ model breedingsows {
   matingevents      matingevents[]
 }
 
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model boars {
   boar_id         Int            @id @default(autoincrement())
   breed_id        Int

@@ -34,7 +34,7 @@ class MatingEventsService {
     return await createMatingEvent(data);
   }
 
-  async update(id: number, data: Prisma.matingeventsUpdateInput) {
+  async update(id: number, data: Prisma.matingeventsUncheckedUpdateInput) {
     return await updateMatingEvent(id, data);
   }
 

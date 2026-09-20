@@ -7,6 +7,8 @@ export const MATING_EVENT_ERROR_CODES = {
   MATING_EVENT_ID_INVALID: "MATING_EVENT_ID_INVALID",
   SOW_ID_INVALID: "SOW_ID_INVALID",
   BOAR_ID_INVALID: "BOAR_ID_INVALID",
+  BOAR_RETIRED: "BOAR_RETIRED",
+  BOAR_NOT_FOUND: "BOAR_NOT_FOUND",
   MATING_EVENT_NOT_FOUND: "MATING_EVENT_NOT_FOUND",
   SOW_NOT_FOUND: "SOW_NOT_FOUND",
   SOW_NOT_EMPTY: "SOW_NOT_EMPTY",
@@ -83,6 +85,24 @@ export const matingEventErrors = {
       "The boar id must be a positive integer.",
       "Cannot fetch mating events by boar",
       { boarId: rawValue },
+    ),
+
+  boarRetired: (boarId: number) =>
+    createMatingEventError(
+      409,
+      MATING_EVENT_ERROR_CODES.BOAR_RETIRED,
+      "A retired boar cannot be assigned to a mating event.",
+      "Cannot assign retired boar to mating event",
+      { boarId },
+    ),
+
+  boarNotFound: (boarId: number) =>
+    createMatingEventError(
+      404,
+      MATING_EVENT_ERROR_CODES.BOAR_NOT_FOUND,
+      "The selected boar was not found.",
+      "Cannot assign boar to mating event",
+      { boarId },
     ),
 
   matingEventNotFound: (

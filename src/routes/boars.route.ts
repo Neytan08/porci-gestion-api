@@ -15,11 +15,11 @@ const router = Router();
  * @swagger
  * /boars:
  *   get:
- *     summary: Get all boars
+ *     summary: Get active boars
  *     tags: [Boars]
  *     responses:
  *       200:
- *         description: List of all boars
+ *         description: Boars with neither retirement field set, including breed and age in years and completed months
  */
 router.get("/", asyncHandler(BoarsController.getAll.bind(BoarsController)));
 
@@ -38,7 +38,11 @@ router.get("/", asyncHandler(BoarsController.getAll.bind(BoarsController)));
  *         description: Tag number to validate
  *     responses:
  *       200:
- *         description: Boolean result indicating whether the tag exists
+ *         description: Boolean result indicating whether a tag exists, ignoring case and whitespace
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: boolean
  */
 router.get(
   "/check-boar-tag-number-exists/:boarTagNumber",
@@ -60,7 +64,7 @@ router.get(
  *         description: ID of the boar
  *     responses:
  *       200:
- *         description: Boar found
+ *         description: Boar with breed and age in years and completed months
  *       404:
  *         description: Boar not found
  */
@@ -78,41 +82,39 @@ router.get("/:id", asyncHandler(BoarsController.getById.bind(BoarsController)));
  *         application/json:
  *           schema:
  *             type: object
+ *             required: [boar_tag_number, breed_id, birth_date]
  *             properties:
  *               boar_tag_number:
  *                 type: string
  *                 example: "B010"
  *               weight:
  *                 type: number
+ *                 nullable: true
  *                 example: null
  *               length:
  *                 type: number
+ *                 nullable: true
  *                 example: null
  *               birth_date:
  *                 type: string
- *                 format: date
  *                 example: "2023-06-15"
+ *                 description: M/D/YYYY, YYYY-MM-DD, or ISO 8601 timestamp with an explicit offset; the supplied calendar day is stored
  *               breed_id:
  *                 type: integer
  *                 example: 1
- *               removal_date:
- *                 type: string
- *                 format: date
- *                 example: null
- *               removal_reason:
- *                 type: string
- *                 example: null
  *               description:
  *                 type: string
- *                 example: null
- *               age:
- *                 type: number
+ *                 nullable: true
  *                 example: null
  *     responses:
  *       201:
- *         description: Boar created successfully
+ *         description: Created boar in a newBoar object
  *       400:
  *         description: Validation error
+ *       404:
+ *         description: Breed not found
+ *       409:
+ *         description: Boar tag already exists under case and whitespace insensitive comparison
  */
 router.post("/", asyncHandler(BoarsController.create.bind(BoarsController)));
 
@@ -136,24 +138,37 @@ router.post("/", asyncHandler(BoarsController.create.bind(BoarsController)));
  *           schema:
  *             type: object
  *             properties:
+ *               boar_tag_number:
+ *                 type: string
+ *                 example: "B010"
+ *               breed_id:
+ *                 type: integer
+ *                 example: 1
  *               weight:
  *                 type: number
+ *                 nullable: true
  *                 example: 265.0
  *               length:
  *                 type: number
+ *                 nullable: true
  *                 example: 162.0
- *               removal_date:
+ *               birth_date:
  *                 type: string
- *                 format: date
- *                 example: 10/05/2025
- *               removal_reason:
+ *                 example: "6/15/2023"
+ *                 description: M/D/YYYY, YYYY-MM-DD, or ISO 8601 timestamp with an explicit offset
+ *               description:
  *                 type: string
- *                 example: "Health issues"
+ *                 nullable: true
+ *                 example: "Healthy"
  *     responses:
  *       200:
- *         description: Boar updated successfully
+ *         description: Updated boar in an updatedBoar object
+ *       400:
+ *         description: Invalid request
  *       404:
- *         description: Boar not found
+ *         description: Boar or breed not found
+ *       409:
+ *         description: Boar is retired or tag already exists
  */
 router.put("/:id", asyncHandler(BoarsController.update.bind(BoarsController)));
 
@@ -171,26 +186,34 @@ router.put("/:id", asyncHandler(BoarsController.update.bind(BoarsController)));
  *             type: object
  *             required:
  *               - boar_ids
+ *               - removal_date
+ *               - removal_reason
  *             properties:
  *               boar_ids:
  *                 oneOf:
  *                   - type: integer
  *                   - type: array
+ *                     minItems: 1
  *                     items:
  *                       type: integer
  *                 example: [1, 2]
  *               removal_date:
  *                 type: string
- *                 format: date
  *                 example: "2026-06-17"
+ *                 description: M/D/YYYY, YYYY-MM-DD, or ISO 8601 timestamp with an explicit offset
  *               removal_reason:
  *                 type: string
+ *                 minLength: 1
  *                 example: "End of reproductive use"
  *     responses:
  *       200:
- *         description: Boars retired successfully
+ *         description: Count of boars retired in the atomic batch
+ *       400:
+ *         description: Invalid retirement payload or removal date before birth date
  *       404:
  *         description: One or more boars were not found
+ *       409:
+ *         description: One or more boars are already retired
  */
 router.patch("/retire", asyncHandler(BoarsController.retire.bind(BoarsController)));
 
@@ -212,6 +235,8 @@ router.patch("/retire", asyncHandler(BoarsController.retire.bind(BoarsController
  *         description: Boar deleted successfully
  *       404:
  *         description: Boar not found
+ *       409:
+ *         description: Boar is retired or has mating events
  */
 router.delete("/:id", asyncHandler(BoarsController.delete.bind(BoarsController)));
 

@@ -1,19 +1,29 @@
 import type { Prisma } from "@prisma/client";
+import type { CreateBoarInput, RetireBoarInput, UpdateBoarInput } from "./boarsTypes";
 import prisma from "../../prismaClient";
-import {  isPrismaForeignKeyConstraintError, isPrismaRecordNotFoundError, isPrismaUniqueConstraintError } from "../../utils/prismaErrors";
+import {
+  isPrismaForeignKeyConstraintError,
+  isPrismaRecordNotFoundError,
+  isPrismaUniqueConstraintError,
+} from "../../utils/prismaErrors";
 import { boarErrors } from "./boarErrors";
-import { countBoarMatingEvents, getBoarBreedById, getBoarByNormalizedTagNumber } from "./boarsQueries";
-import { hasBoarDateValue, isRemovalDateBeforeBirthDate } from "./boarsRules";
-
-export type RetireBoarInput = {
-  removal_date?: string;
-  removal_reason?: string | null;
-};
+import {
+  countBoarMatingEvents,
+  createBoarRecord,
+  deleteBoarRecord,
+  getBoarBreedById,
+  getBoarByNormalizedTagNumber,
+  getBoarsForRetirement,
+  getBoarStateById,
+  retireBoarRecords,
+  updateBoarRecord,
+} from "./boarsQueries";
+import { isActiveBoar, isRemovalDateBeforeBirthDate } from "./boarsRules";
 
 /**
  * Guards chronological consistency for the boar lifecycle dates.
  */
-const ensureRemovalDateIsNotBeforeBirthDate = (birthDate: unknown, removalDate: unknown) => {
+const ensureRemovalDateIsNotBeforeBirthDate = (birthDate: Date, removalDate: Date) => {
   if (isRemovalDateBeforeBirthDate(birthDate, removalDate)) {
     throw boarErrors.removalDateBeforeBirthDate(birthDate, removalDate);
   }
@@ -47,16 +57,14 @@ const ensureBoarTagNumberIsAvailable = async (
 };
 
 /**
- * Creates a boar only after validating references, unique tag number, and dates.
+ * Creates a boar after validating its breed and tag number.
  */
-export const createBoar = async (data: Prisma.boarsUncheckedCreateInput) => {
+export const createBoar = async (data: CreateBoarInput) => {
   try {
     return await prisma.$transaction(async (tx) => {
       await ensureBreedExists(tx, data.breed_id);
       await ensureBoarTagNumberIsAvailable(tx, data.boar_tag_number);
-      ensureRemovalDateIsNotBeforeBirthDate(data.birth_date, data.removal_date);
-
-      return await tx.boars.create({ data });
+      return await createBoarRecord(data, tx);
     });
   } catch (error) {
     if (isPrismaUniqueConstraintError(error)) {
@@ -68,23 +76,19 @@ export const createBoar = async (data: Prisma.boarsUncheckedCreateInput) => {
 };
 
 /**
- * Updates a boar after confirming the target exists and the changed fields keep
- * the record inside the business rules.
+ * Updates an active boar after validating changed references and tag number.
  */
-export const updateBoar = async (id: number, data: Prisma.boarsUncheckedUpdateInput) => {
+export const updateBoar = async (id: number, data: UpdateBoarInput) => {
   try {
     return await prisma.$transaction(async (tx) => {
-      const currentBoar = await tx.boars.findUnique({
-        where: { boar_id: id },
-        select: {
-          boar_id: true,
-          birth_date: true,
-          removal_date: true,
-        },
-      });
+      const currentBoar = await getBoarStateById(id, tx);
 
       if (!currentBoar) {
         throw boarErrors.boarNotFound(id, "update");
+      }
+
+      if (!isActiveBoar(currentBoar)) {
+        throw boarErrors.alreadyRetired([id]);
       }
 
       if (typeof data.breed_id === "number") {
@@ -95,19 +99,7 @@ export const updateBoar = async (id: number, data: Prisma.boarsUncheckedUpdateIn
         await ensureBoarTagNumberIsAvailable(tx, data.boar_tag_number, id);
       }
 
-      const nextBirthDate = hasBoarDateValue(data.birth_date)
-        ? data.birth_date
-        : currentBoar.birth_date;
-      const nextRemovalDate =
-        hasBoarDateValue(data.removal_date) || data.removal_date === null
-          ? data.removal_date
-          : currentBoar.removal_date;
-      ensureRemovalDateIsNotBeforeBirthDate(nextBirthDate, nextRemovalDate);
-
-      return await tx.boars.update({
-        where: { boar_id: id },
-        data,
-      });
+      return await updateBoarRecord(id, data, tx);
     });
   } catch (error) {
     if (isPrismaUniqueConstraintError(error)) {
@@ -117,7 +109,8 @@ export const updateBoar = async (id: number, data: Prisma.boarsUncheckedUpdateIn
     }
 
     if (isPrismaRecordNotFoundError(error)) {
-      throw boarErrors.boarNotFound(id, "update");
+      const boar = await getBoarStateById(id);
+      throw boar ? boarErrors.alreadyRetired([id]) : boarErrors.boarNotFound(id, "update");
     }
 
     throw error;
@@ -130,19 +123,22 @@ export const updateBoar = async (id: number, data: Prisma.boarsUncheckedUpdateIn
 export const deleteBoar = async (id: number) => {
   try {
     return await prisma.$transaction(async (tx) => {
+      const boar = await getBoarStateById(id, tx);
+      if (!boar) throw boarErrors.boarNotFound(id, "delete");
+      if (!isActiveBoar(boar)) throw boarErrors.alreadyRetired([id]);
+
       const matingEventsCount = await countBoarMatingEvents(id, tx);
 
       if (matingEventsCount > 0) {
         throw boarErrors.boarHasMatingEvents(id, matingEventsCount);
       }
 
-      return await tx.boars.delete({
-        where: { boar_id: id },
-      });
+      return await deleteBoarRecord(id, tx);
     });
   } catch (error) {
     if (isPrismaRecordNotFoundError(error)) {
-      throw boarErrors.boarNotFound(id, "delete");
+      const boar = await getBoarStateById(id);
+      throw boar ? boarErrors.alreadyRetired([id]) : boarErrors.boarNotFound(id, "delete");
     }
 
     if (isPrismaForeignKeyConstraintError(error)) {
@@ -167,35 +163,11 @@ const getUniqueBoarIdsOrThrow = (boarIds: number[]) => {
 };
 
 /**
- * Loads every boar requested for retirement and fails before mutating data when any id is missing.
- */
-const loadBoarsForRetirement = async (
-  tx: Prisma.TransactionClient,
-  boarIds: number[],
-) => {
-  const boars = await tx.boars.findMany({
-    where: { boar_id: { in: boarIds } },
-    select: {
-      boar_id: true,
-      birth_date: true,
-    },
-  });
-
-  if (boars.length !== boarIds.length) {
-    const foundIds = new Set(boars.map(({ boar_id }) => boar_id));
-    const missingBoarIds = boarIds.filter((boarId) => !foundIds.has(boarId));
-    throw boarErrors.boarsNotFound(boarIds, missingBoarIds);
-  }
-
-  return boars;
-};
-
-/**
  * Keeps each boar's removal date after its own birth date before retiring the batch.
  */
 const ensureRetirementDatesAreConsistent = (
   boars: Array<{ boar_id: number; birth_date: Date }>,
-  removalDate: unknown,
+  removalDate: Date,
 ) => {
   for (const boar of boars) {
     ensureRemovalDateIsNotBeforeBirthDate(boar.birth_date, removalDate);
@@ -209,19 +181,22 @@ export const retireBoar = async (ids: number[], data: RetireBoarInput) => {
   const uniqueBoarIds = getUniqueBoarIdsOrThrow(ids);
 
   return await prisma.$transaction(async (tx) => {
-    const currentBoars = await loadBoarsForRetirement(tx, uniqueBoarIds);
-    const removalDate = data.removal_date ?? new Date();
+    const currentBoars = await getBoarsForRetirement(uniqueBoarIds, tx);
+    if (currentBoars.length !== uniqueBoarIds.length) {
+      const foundIds = new Set(currentBoars.map(({ boar_id }) => boar_id));
+      const missingIds = uniqueBoarIds.filter((id) => !foundIds.has(id));
+      throw boarErrors.boarsNotFound(uniqueBoarIds, missingIds);
+    }
 
-    ensureRetirementDatesAreConsistent(currentBoars, removalDate);
+    const retiredIds = currentBoars
+      .filter((boar) => !isActiveBoar(boar))
+      .map((boar) => boar.boar_id);
+    if (retiredIds.length > 0) throw boarErrors.alreadyRetired(retiredIds);
 
-    return await tx.boars.updateMany({
-      where: { boar_id: { in: uniqueBoarIds } },
-      data: {
-        removal_date: removalDate,
-        ...(data.removal_reason !== undefined
-          ? { removal_reason: data.removal_reason }
-          : {}),
-      },
-    });
+    ensureRetirementDatesAreConsistent(currentBoars, data.removal_date);
+
+    const result = await retireBoarRecords(uniqueBoarIds, data, tx);
+    if (result.count !== uniqueBoarIds.length) throw boarErrors.alreadyRetired(uniqueBoarIds);
+    return result;
   });
 };

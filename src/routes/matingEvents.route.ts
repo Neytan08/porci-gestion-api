@@ -107,8 +107,10 @@ router.get("/:id", asyncHandler(matingEventsController.getById.bind(matingEvents
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ApiErrorResponse'
+ *       404:
+ *         description: Selected boar not found
  *       409:
- *         description: The sow is not eligible for creating a mating event
+ *         description: The sow is not eligible or the selected boar is retired
  *         content:
  *           application/json:
  *             schema:
@@ -162,11 +164,13 @@ router.post("/", asyncHandler(matingEventsController.create.bind(matingEventsCon
  *             schema:
  *               $ref: '#/components/schemas/ApiErrorResponse'
  *       404:
- *         description: Mating event not found
+ *         description: Mating event or selected boar not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ApiErrorResponse'
+ *       409:
+ *         description: Selected boar is retired
  */
 router.put("/:id", asyncHandler(matingEventsController.update.bind(matingEventsController)));
 
