@@ -142,3 +142,5 @@ Review documentation whenever changing:
 - API error behavior.
 
 Swagger should remain useful for both API documentation and manual testing.
+
+Document each response with its HTTP status code and a short description explaining what it means. Do not add response body schemas, response examples, or detailed error-code lists unless explicitly requested. Keep request parameters and request body schemas documented for manual testing.

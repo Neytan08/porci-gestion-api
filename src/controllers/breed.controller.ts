@@ -6,12 +6,14 @@ import logger from "../utils/logger";
 import { parsePositiveIdOrThrow } from "../utils/requestParsing";
 
 class BreedController {
+  /** Responds with the breed catalog and logs its size. */
   async getAll(_: Request, res: Response) {
     const breeds = await BreedService.getAll();
     logger.info("Fetched breeds", { count: breeds.length });
     res.json(breeds);
   }
 
+  /** Resolves a requested breed or returns the entity-specific not-found error. */
   async getById(req: Request, res: Response) {
     const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
       breedErrors.invalidBreedId(rawValue, "retrieve"),
@@ -26,6 +28,7 @@ class BreedController {
     res.json(breed);
   }
 
+  /** Validates breed creation input and responds with the created record. */
   async create(req: Request, res: Response) {
     const parseResult = breedSchema.safeParse(req.body);
 
@@ -41,6 +44,7 @@ class BreedController {
     res.status(201).json(newBreed);
   }
 
+  /** Validates a partial breed update and responds with the resulting record. */
   async update(req: Request, res: Response) {
     const parseResult = breedUpdateSchema.safeParse(req.body);
 
@@ -59,6 +63,7 @@ class BreedController {
     res.json(updated);
   }
 
+  /** Requests breed deletion and returns an empty success response. */
   async delete(req: Request, res: Response) {
     const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
       breedErrors.invalidBreedId(rawValue, "delete"),

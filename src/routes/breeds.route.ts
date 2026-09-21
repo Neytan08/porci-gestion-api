@@ -2,18 +2,13 @@ import { Router } from "express";
 import BreedController from "../controllers/breed.controller";
 import { asyncHandler } from "../middlewares/asyncHandler";
 
-/**
- * The property "bind" is used to ensure that "this" inside the controller
- * methods refers to the controller instance
- */
-
 const router = Router();
 
 /**
  * @swagger
  * tags:
  *   name: Breed
- *   description: Operations related to sow's and boar's breeds
+ *   description: Operations related to sow and boar breeds
  */
 
 /**
@@ -39,11 +34,14 @@ router.get("/", asyncHandler(BreedController.getAll.bind(BreedController)));
  *         name: id
  *         schema:
  *           type: integer
+ *           minimum: 1
  *         required: true
  *         description: ID of the breed
  *     responses:
  *       200:
  *         description: Breed found
+ *       400:
+ *         description: Invalid breed ID
  *       404:
  *         description: Breed not found
  */
@@ -61,16 +59,24 @@ router.get("/:id", asyncHandler(BreedController.getById.bind(BreedController)));
  *         application/json:
  *           schema:
  *             type: object
+ *             required: [breed_name]
  *             properties:
  *               breed_name:
  *                 type: string
- *                 example: Durok
+ *                 minLength: 1
+ *                 maxLength: 100
+ *                 pattern: '\S'
+ *                 example: Duroc
  *               description:
  *                 type: string
- *                 example: Proveniente de japon
+ *                 example: Breed description
  *     responses:
  *       201:
  *         description: Breed created successfully
+ *       400:
+ *         description: Invalid request
+ *       409:
+ *         description: Breed name already exists, ignoring case and whitespace
  */
 router.post("/", asyncHandler(BreedController.create.bind(BreedController)));
 
@@ -78,13 +84,15 @@ router.post("/", asyncHandler(BreedController.create.bind(BreedController)));
  * @swagger
  * /breeds/{id}:
  *   put:
- *     summary: Update a breed by ID
+ *     summary: Partially update a breed by ID
+ *     description: Changes only supplied editable fields.
  *     tags: [Breed]
  *     parameters:
  *       - in: path
  *         name: id
  *         schema:
  *           type: integer
+ *           minimum: 1
  *         required: true
  *         description: ID of the breed to update
  *     requestBody:
@@ -96,15 +104,22 @@ router.post("/", asyncHandler(BreedController.create.bind(BreedController)));
  *             properties:
  *               breed_name:
  *                 type: string
- *                 example: Landrass
+ *                 minLength: 1
+ *                 maxLength: 100
+ *                 pattern: '\S'
+ *                 example: Large White
  *               description:
  *                 type: string
- *                 example: Orejas punteadas
+ *                 example: Updated breed description
  *     responses:
  *       200:
  *         description: Breed updated successfully
+ *       400:
+ *         description: Invalid request
  *       404:
- *         description: Beed not found
+ *         description: Breed not found
+ *       409:
+ *         description: Breed name already exists, ignoring case and whitespace
  */
 router.put("/:id", asyncHandler(BreedController.update.bind(BreedController)));
 
@@ -119,13 +134,18 @@ router.put("/:id", asyncHandler(BreedController.update.bind(BreedController)));
  *         name: id
  *         schema:
  *           type: integer
+ *           minimum: 1
  *         required: true
  *         description: ID of the breed to delete
  *     responses:
  *       204:
  *         description: Breed deleted successfully
+ *       400:
+ *         description: Invalid breed ID
  *       404:
  *         description: Breed not found
+ *       409:
+ *         description: Breed has associated boars or breeding sows
  */
 router.delete("/:id", asyncHandler(BreedController.delete.bind(BreedController)));
 
