@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { getActiveBreedingSowWithStatus } from "../breedingSows/breedingSowsQueries";
 import {
   createMatingEvent,
   deleteMatingEvent,
@@ -11,7 +12,6 @@ import {
   getMatingEventsByBoar,
   getMatingEventsBySow,
   getMatingEventsGroupedByPregnancyResult,
-  getSowByIdWithStatus,
 } from "./matingEventsQueries";
 
 /**
@@ -23,7 +23,7 @@ class MatingEventsService {
   }
 
   async getSowByIdWithStatus(sowId: number) {
-    return await getSowByIdWithStatus(sowId);
+    return await getActiveBreedingSowWithStatus(sowId);
   }
 
   async getById(id: number) {

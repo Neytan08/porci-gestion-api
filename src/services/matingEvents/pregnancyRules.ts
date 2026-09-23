@@ -1,4 +1,7 @@
-import { BREEDING_SOW_STATUSES } from "../breedingSows/breedingSowsRules";
+import {
+  BREEDING_SOW_STATUSES,
+  type BreedingSowStatus,
+} from "../breedingSows/breedingSowsRules";
 
 export const PREGNANCY_RESULTS = {
   pendiente: "Pendiente",
@@ -118,7 +121,7 @@ export const getSowStatusAfterDeletingMatingEvent = (
  */
 export const getSowStatusForCreatedMatingEvent = (
   pregnancyResult: string | null,
-): string | null => {
+): BreedingSowStatus | null => {
   if (!pregnancyResult) {
     return null;
   }

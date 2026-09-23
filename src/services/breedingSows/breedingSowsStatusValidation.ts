@@ -1,12 +1,16 @@
 import type { Prisma } from "@prisma/client";
 import prisma from "../../prismaClient";
+import { getActiveFarrowingBySowId } from "../farrowings/farrowingsQueries";
 import { getBlockingMatingEventBySowId } from "../matingEvents/matingEventsQueries";
 import { breedingSowErrors } from "./breedingSowErrors";
-import { getActiveFarrowingBySowId } from "./breedingSowsQueries";
+import {
+  BREEDING_SOW_STATUSES,
+  type BreedingSowStatus,
+} from "./breedingSowsRules";
 
 type ManualStatusChangeQueryClient = Pick<
   Prisma.TransactionClient,
-  "breedingsows" | "breed" | "matingevents" | "farrowings"
+  "matingevents" | "farrowings"
 >;
 
 /**
@@ -16,7 +20,7 @@ type ManualStatusChangeQueryClient = Pick<
 export const ensureManualStatusChangeIsAllowed = async (
   sowId: number,
   currentStatus: string | null,
-  newStatus: string,
+  newStatus: Exclude<BreedingSowStatus, typeof BREEDING_SOW_STATUSES.retirada>,
   queryClient: ManualStatusChangeQueryClient = prisma,
 ): Promise<void> => {
   if (currentStatus === newStatus) {

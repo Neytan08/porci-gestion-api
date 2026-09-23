@@ -3,12 +3,20 @@ import type { PrismaClientKnownRequestError } from "@prisma/client/runtime/libra
 import prisma from "../../prismaClient";
 import { getBoarStateForAssignment } from "../boars/boarsQueries";
 import { isActiveBoar } from "../boars/boarsRules";
+import {
+  getActiveBreedingSowWithStatus,
+  updateActiveBreedingSowStatus,
+  updateActiveBreedingSowStatuses,
+} from "../breedingSows/breedingSowsQueries";
 import { BREEDING_SOW_STATUSES } from "../breedingSows/breedingSowsRules";
 import {
+  deleteMatingEventById,
   getBlockingMatingEventBySowId,
   getPregnancyUpdateEvents,
-  getSowByIdWithStatus,
+  insertMatingEvent,
   type PregnancyUpdateEvent,
+  updateMatingEventById,
+  updateMatingEventPregnancyResults,
 } from "./matingEventsQueries";
 import { matingEventErrors } from "./matingEventErrors";
 import {
@@ -149,10 +157,7 @@ const restoreSowStatusAfterDeletingPositiveEvent = async (
     return;
   }
 
-  await tx.breedingsows.update({
-    where: { sow_id: sowId },
-    data: { status: BREEDING_SOW_STATUSES[nextStatusKey] },
-  });
+  await updateActiveBreedingSowStatus(sowId, BREEDING_SOW_STATUSES[nextStatusKey], tx);
 };
 
 /**
@@ -175,13 +180,7 @@ const updateAffectedSowStatuses = async (
 
   const sowIds = Array.from(new Set(events.map(({ sow_id }) => sow_id)));
 
-  await tx.breedingsows.updateMany({
-    where: {
-      sow_id: { in: sowIds },
-      NOT: { status: nextStatus },
-    },
-    data: { status: nextStatus },
-  });
+  await updateActiveBreedingSowStatuses(sowIds, nextStatus, tx);
 };
 
 /**
@@ -215,7 +214,7 @@ const ensureBoarCanBeAssigned = async (tx: Prisma.TransactionClient, boarId: num
 /** Creates a mating event when the sow and selected boar are eligible. */
 export const createMatingEvent = async (data: Prisma.matingeventsUncheckedCreateInput) => {
   return await prisma.$transaction(async (tx) => {
-    const sow = await getSowByIdWithStatus(data.sow_id, tx);
+    const sow = await getActiveBreedingSowWithStatus(data.sow_id, tx);
 
     if (!sow) {
       throw matingEventErrors.sowNotFound(data.sow_id);
@@ -231,17 +230,12 @@ export const createMatingEvent = async (data: Prisma.matingeventsUncheckedCreate
 
     if (data.boar_id != null) await ensureBoarCanBeAssigned(tx, data.boar_id);
 
-    const newMatingEvent = await tx.matingevents.create({
-      data,
-    });
+    const newMatingEvent = await insertMatingEvent(data, tx);
 
     // The sow status is updated only when the new mating event has a pregnancy result that actually moves the sow.
     const nextSowStatus = getSowStatusForCreatedMatingEvent(data.pregnancy_result ?? null);
     if (nextSowStatus) {
-      await tx.breedingsows.update({
-        where: { sow_id: data.sow_id },
-        data: { status: nextSowStatus },
-      });
+      await updateActiveBreedingSowStatus(data.sow_id, nextSowStatus, tx);
     }
 
     return newMatingEvent;
@@ -255,7 +249,7 @@ export const updateMatingEvent = async (id: number, data: Prisma.matingeventsUnc
   try {
     return await prisma.$transaction(async (tx) => {
       if (typeof data.boar_id === "number") await ensureBoarCanBeAssigned(tx, data.boar_id);
-      return await tx.matingevents.update({ where: { mating_id: id }, data });
+      return await updateMatingEventById(id, data, tx);
     });
   } catch (error) {
     if (isPrismaRecordNotFoundError(error)) {
@@ -272,14 +266,7 @@ export const updateMatingEvent = async (id: number, data: Prisma.matingeventsUnc
 export const deleteMatingEvent = async (id: number) => {
   try {
     return await prisma.$transaction(async (tx) => {
-      const deletedEvent = await tx.matingevents.delete({
-        where: { mating_id: id },
-        select: {
-          mating_id: true,
-          sow_id: true,
-          pregnancy_result: true,
-        },
-      });
+      const deletedEvent = await deleteMatingEventById(id, tx);
 
       await restoreSowStatusAfterDeletingPositiveEvent(
         tx,
@@ -320,10 +307,11 @@ export const updatePregnancyResult = async (matingIds: number[], pregnancyResult
     const updatedEvents =
       currentPregnancyResult === nextPregnancyResult
         ? { count: 0 }
-        : await tx.matingevents.updateMany({
-            where: { mating_id: { in: uniqueMatingIds } },
-            data: { pregnancy_result: nextPregnancyResult },
-          });
+        : await updateMatingEventPregnancyResults(
+            uniqueMatingIds,
+            nextPregnancyResult,
+            tx,
+          );
 
     await updateAffectedSowStatuses(
       tx,

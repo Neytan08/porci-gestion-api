@@ -7,12 +7,14 @@ import logger from "../utils/logger";
 import { parsePositiveIdOrThrow, parsePositiveIdsOrThrow, parseRequiredStringParamOrThrow } from "../utils/requestParsing";
 
 class BreedingSowsController {
+  /** Returns the active breeding-sow collection. */
   async getAll(_: Request, res: Response) {
     const sows = await BreedingSowsService.getAll();
     logger.info("Fetched breeding sows", { count: sows.length });
     res.json(sows);
   }
 
+  /** Returns one active breeding sow identified by its route parameter. */
   async getById(req: Request, res: Response) {
     const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
       breedingSowErrors.invalidBreedingSowId(rawValue, "retrieve"),
@@ -27,6 +29,7 @@ class BreedingSowsController {
     return res.json(sow);
   }
 
+  /** Reports whether a normalized sow tag is already registered. */
   async checkSowTagNumberExists(req: Request, res: Response) {
     const sowTagNumber = parseRequiredStringParamOrThrow(
       req.params.sowTagNumber,
@@ -38,6 +41,7 @@ class BreedingSowsController {
     return res.json(exists);
   }
 
+  /** Validates and registers a breeding sow. */
   async create(req: Request, res: Response) {
     const parseResult = breedingSowSchema.safeParse(req.body);
 
@@ -55,6 +59,7 @@ class BreedingSowsController {
     res.status(201).json(newSow);
   }
 
+  /** Validates whether a proposed manual status change is currently allowed. */
   async validateStatusChange(req: Request, res: Response) {
     const parseResult = breedingSowStatusChangeValidationSchema.safeParse(req.body);
 
@@ -74,6 +79,7 @@ class BreedingSowsController {
     res.status(204).send();
   }
 
+  /** Validates and updates editable fields on an active breeding sow. */
   async update(req: Request, res: Response) {
     const parseResult = breedingSowUpdateSchema.safeParse(req.body);
 
@@ -94,6 +100,7 @@ class BreedingSowsController {
     res.json(updatedSow);
   }
 
+  /** Permanently deletes an eligible active breeding sow. */
   async delete(req: Request, res: Response) {
     const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
       breedingSowErrors.invalidBreedingSowId(rawValue, "delete"),
@@ -107,6 +114,7 @@ class BreedingSowsController {
     res.status(204).send();
   }
 
+  /** Retires one or more active sows and closes their open reproductive workflows. */
   async retire(req: Request, res: Response) {
     const parseResult = breedingSowRetireSchema.safeParse(req.body ?? {});
 
@@ -130,6 +138,7 @@ class BreedingSowsController {
     res.json(result);
   }
 
+  /** Returns active breeding sows matching the requested canonical status. */
   async getAllByStatus(req: Request, res: Response) {
     const rawStatus = parseRequiredStringParamOrThrow(
       req.params.status,

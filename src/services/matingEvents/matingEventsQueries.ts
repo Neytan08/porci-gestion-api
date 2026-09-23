@@ -4,7 +4,7 @@ import { PREGNANCY_RESULTS } from "./pregnancyRules";
 
 type MatingEventsQueryClient = Pick<
   Prisma.TransactionClient,
-  "breedingsows" | "matingevents"
+  "matingevents"
 >;
 
 export type PregnancyUpdateEvent = {
@@ -18,22 +18,6 @@ export type PregnancyUpdateEvent = {
  */
 export const getAllMatingEvents = async () => {
   return await prisma.matingevents.findMany();
-};
-
-/**
- * Loads the sow and its current status so write flows can validate reproductive state safely.
- */
-export const getSowByIdWithStatus = async (
-  sowId: number,
-  queryClient: MatingEventsQueryClient = prisma,
-) => {
-  return await queryClient.breedingsows.findUnique({
-    where: { sow_id: sowId },
-    select: {
-      sow_id: true,
-      status: true,
-    },
-  });
 };
 
 /**
@@ -138,4 +122,78 @@ export const getMatingEventsGroupedByPregnancyResult = async () => {
     pregnancy_result,
     events: groupedEvents,
   }));
+};
+
+/** Counts the reproductive events that prevent hard deletion of a sow. */
+export const countMatingEventsBySowId = async (
+  sowId: number,
+  queryClient: MatingEventsQueryClient = prisma,
+) => {
+  return await queryClient.matingevents.count({ where: { sow_id: sowId } });
+};
+
+/** Cancels pending or positive mating events when their sows are retired. */
+export const cancelActiveMatingEventsBySowIds = async (
+  sowIds: number[],
+  queryClient: MatingEventsQueryClient,
+) => {
+  return await queryClient.matingevents.updateMany({
+    where: {
+      sow_id: { in: sowIds },
+      pregnancy_result: { in: [PREGNANCY_RESULTS.pendiente, PREGNANCY_RESULTS.positivo] },
+    },
+    data: { pregnancy_result: PREGNANCY_RESULTS.cancelado },
+  });
+};
+
+/** Inserts a mating event inside the transaction that owns its sow transition. */
+export const insertMatingEvent = async (
+  data: Prisma.matingeventsUncheckedCreateInput,
+  queryClient: MatingEventsQueryClient,
+) => {
+  return await queryClient.matingevents.create({ data });
+};
+
+/** Persists scalar changes to one mating event. */
+export const updateMatingEventById = async (
+  id: number,
+  data: Prisma.matingeventsUncheckedUpdateInput,
+  queryClient: MatingEventsQueryClient,
+) => {
+  return await queryClient.matingevents.update({ where: { mating_id: id }, data });
+};
+
+/** Deletes one mating event and returns the state needed to restore its sow. */
+export const deleteMatingEventById = async (
+  id: number,
+  queryClient: MatingEventsQueryClient,
+) => {
+  return await queryClient.matingevents.delete({
+    where: { mating_id: id },
+    select: { mating_id: true, sow_id: true, pregnancy_result: true },
+  });
+};
+
+/** Applies one pregnancy result to a validated event batch. */
+export const updateMatingEventPregnancyResults = async (
+  matingIds: number[],
+  pregnancyResult: string,
+  queryClient: MatingEventsQueryClient,
+) => {
+  return await queryClient.matingevents.updateMany({
+    where: { mating_id: { in: matingIds } },
+    data: { pregnancy_result: pregnancyResult },
+  });
+};
+
+/** Updates one mating event pregnancy result during a related workflow. */
+export const updateMatingEventPregnancyResult = async (
+  matingId: number,
+  pregnancyResult: string,
+  queryClient: MatingEventsQueryClient,
+) => {
+  return await queryClient.matingevents.update({
+    where: { mating_id: matingId },
+    data: { pregnancy_result: pregnancyResult },
+  });
 };

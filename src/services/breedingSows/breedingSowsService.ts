@@ -1,66 +1,79 @@
-import type { Prisma } from "@prisma/client";
 import {
   createBreedingSow,
   deleteBreedingSow,
-  type RetireBreedingSowInput,
   retireBreedingSow,
   updateBreedingSow,
+  validateBreedingSowStatusChange,
 } from "./breedingSowsCommands";
 import {
   getAllBreedingSows,
   getBreedingSowById,
   getBreedingSowByNormalizedTagNumber,
-  getBreedingSowStatusById,
   getBreedingSowsByStatus,
 } from "./breedingSowsQueries";
-import { ensureManualStatusChangeIsAllowed } from "./breedingSowsStatusValidation";
-import { breedingSowErrors } from "./breedingSowErrors";
+import {
+  BREEDING_SOW_STATUSES,
+  type BreedingSowStatus,
+} from "./breedingSowsRules";
+import type {
+  CreateBreedingSowInput,
+  RetireBreedingSowInput,
+  UpdateBreedingSowInput,
+} from "./breedingSowsTypes";
 
 /**
  * Keeps the public breeding-sows service API stable while delegating
  * persistence concerns to focused query and command modules.
  */
 class BreedingSowsService {
+  /** Returns all active breeding sows. */
   async getAll() {
     return await getAllBreedingSows();
   }
 
+  /** Returns one active breeding sow by identifier. */
   async getById(id: number) {
     return await getBreedingSowById(id);
   }
 
+  /** Checks normalized sow-tag availability. */
   async checkSowTagNumberExists(sowTagNumber: string) {
     const sow = await getBreedingSowByNormalizedTagNumber(sowTagNumber);
     return Boolean(sow);
   }
 
-  async create(data: Prisma.breedingsowsUncheckedCreateInput) {
+  /** Registers a breeding sow with approved imported-history fields. */
+  async create(data: CreateBreedingSowInput) {
     return await createBreedingSow(data);
   }
 
-  async update(id: number, data: Prisma.breedingsowsUncheckedUpdateInput) {
+  /** Updates the editable profile fields of an active breeding sow. */
+  async update(id: number, data: UpdateBreedingSowInput) {
     return await updateBreedingSow(id, data);
   }
 
-  async validateStatusChange(id: number, status: string) {
-    const sow = await getBreedingSowStatusById(id);
-
-    if (!sow) {
-      throw breedingSowErrors.breedingSowNotFound(id, "retrieve");
-    }
-
-    return await ensureManualStatusChangeIsAllowed(id, sow.status, status);
+  /** Validates a proposed status change without persisting it. */
+  async validateStatusChange(
+    id: number,
+    status: Exclude<BreedingSowStatus, typeof BREEDING_SOW_STATUSES.retirada>,
+  ) {
+    return await validateBreedingSowStatusChange(id, status);
   }
 
+  /** Permanently deletes an active sow without reproductive history. */
   async delete(id: number) {
     return await deleteBreedingSow(id);
   }
 
+  /** Retires active sows and closes their open reproductive workflows atomically. */
   async retire(ids: number[], data: RetireBreedingSowInput) {
     return await retireBreedingSow(ids, data);
   }
 
-  async getAllBreedingSowsByStatus(status: string) {
+  /** Returns active breeding sows matching a canonical status. */
+  async getAllBreedingSowsByStatus(
+    status: Exclude<BreedingSowStatus, typeof BREEDING_SOW_STATUSES.retirada>,
+  ) {
     return await getBreedingSowsByStatus(status);
   }
 }

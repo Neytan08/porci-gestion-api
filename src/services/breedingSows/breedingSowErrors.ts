@@ -17,6 +17,8 @@ export const BREEDING_SOW_ERROR_CODES = {
   BREEDING_SOW_REMOVAL_DATE_BEFORE_ENTRY_DATE: "BREEDING_SOW_REMOVAL_DATE_BEFORE_ENTRY_DATE",
   BREEDING_SOW_LAST_WEANING_DATE_BEFORE_ENTRY_DATE: "BREEDING_SOW_LAST_WEANING_DATE_BEFORE_ENTRY_DATE",
   BREEDING_SOW_HAS_MATING_EVENTS: "BREEDING_SOW_HAS_MATING_EVENTS",
+  BREEDING_SOW_ALREADY_RETIRED: "BREEDING_SOW_ALREADY_RETIRED",
+  BREEDING_SOW_RETIREMENT_STATE_CHANGED: "BREEDING_SOW_RETIREMENT_STATE_CHANGED",
 } as const;
 
 type BreedingSowErrorCode =
@@ -130,6 +132,24 @@ export const breedingSowErrors = {
       "One or more breeding sows were not found.",
       "Cannot retire breeding sows",
       { sowIds, missingSowIds },
+    ),
+
+  breedingSowsAlreadyRetired: (sowIds: number[], retiredSowIds: number[]) =>
+    createBreedingSowError(
+      409,
+      BREEDING_SOW_ERROR_CODES.BREEDING_SOW_ALREADY_RETIRED,
+      "One or more breeding sows have already been retired.",
+      "Cannot retire breeding sows more than once",
+      { sowIds, retiredSowIds },
+    ),
+
+  retirementStateChanged: (sowIds: number[], updatedCount: number) =>
+    createBreedingSowError(
+      409,
+      BREEDING_SOW_ERROR_CODES.BREEDING_SOW_RETIREMENT_STATE_CHANGED,
+      "The breeding sow retirement state changed before the operation could finish.",
+      "Cannot complete breeding sow retirement batch",
+      { sowIds, updatedCount },
     ),
 
   breedNotFound: (breedId: number) =>

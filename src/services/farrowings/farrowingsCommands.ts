@@ -2,11 +2,24 @@ import type { Prisma } from "@prisma/client";
 import prisma from "../../prismaClient";
 import type { WeanFarrowingInput } from "../../schemas_validations/farrowings.schema";
 import { isPrismaRecordNotFoundError } from "../../utils/prismaErrors";
+import {
+  applyFarrowingToBreedingSow,
+  applyWeaningToBreedingSow,
+  getActiveBreedingSowWithStatus,
+} from "../breedingSows/breedingSowsQueries";
 import { BREEDING_SOW_STATUSES, isBeforeDate } from "../breedingSows/breedingSowsRules";
-import { getBlockingMatingEventBySowId, getSowByIdWithStatus } from "../matingEvents/matingEventsQueries";
+import {
+  getBlockingMatingEventBySowId,
+  updateMatingEventPregnancyResult,
+} from "../matingEvents/matingEventsQueries";
 import { PREGNANCY_RESULTS } from "../matingEvents/pregnancyRules";
 import { farrowingErrors } from "./farrowingErrors";
-import { getFarrowingById } from "./farrowingsQueries";
+import {
+  deleteFarrowingById,
+  getFarrowingById,
+  insertFarrowing,
+  updateFarrowingWeaning,
+} from "./farrowingsQueries";
 
 export type CreateFarrowingInput = Omit<
   Prisma.farrowingsUncheckedCreateInput,
@@ -20,7 +33,7 @@ export type CreateFarrowingInput = Omit<
  */
 export const createFarrowing = async (data: CreateFarrowingInput) => {
   return await prisma.$transaction(async (tx) => {
-    const sow = await getSowByIdWithStatus(data.sow_id, tx);
+    const sow = await getActiveBreedingSowWithStatus(data.sow_id, tx);
 
     if (!sow) {
       throw farrowingErrors.sowNotFound(data.sow_id);
@@ -36,28 +49,18 @@ export const createFarrowing = async (data: CreateFarrowingInput) => {
       throw farrowingErrors.positiveMatingEventNotFound(data.sow_id);
     }
 
-    const farrowing = await tx.farrowings.create({
-      data: {
-        ...data,
-        mating_id: matingEvent.mating_id,
-      },
-    });
+    const farrowing = await insertFarrowing(
+      { ...data, mating_id: matingEvent.mating_id },
+      tx,
+    );
 
-    await tx.matingevents.update({
-      where: { mating_id: matingEvent.mating_id },
-      data: { pregnancy_result: PREGNANCY_RESULTS.cerrado },
-    });
+    await updateMatingEventPregnancyResult(
+      matingEvent.mating_id,
+      PREGNANCY_RESULTS.cerrado,
+      tx,
+    );
 
-    const updatedSow = await tx.breedingsows.updateMany({
-      where: {
-        sow_id: data.sow_id,
-        status: BREEDING_SOW_STATUSES.gestacion,
-      },
-      data: {
-        farrowing_number: { increment: 1 },
-        status: BREEDING_SOW_STATUSES.lactancia,
-      },
-    });
+    const updatedSow = await applyFarrowingToBreedingSow(data.sow_id, tx);
 
     if (updatedSow.count !== 1) {
       throw farrowingErrors.sowStatusUpdateFailed(data.sow_id);
@@ -88,20 +91,16 @@ export const weanFarrowing = async (id: number, data: WeanFarrowingInput) => {
       throw farrowingErrors.sowNotLactating(farrowing.sow_id, farrowing.breedingsows.status);
     }
 
-    const updatedFarrowing = await tx.farrowings.update({
-      where: {
-        farrowing_id: id,
-        weaned_date: null,
-        sow_id: farrowing.sow_id,
-        farrowing_date: farrowing.farrowing_date,
-      },
-      data: { weaned_date: weanedDate, weaned_piglets: data.weaned_piglets },
-    });
+    const updatedFarrowing = await updateFarrowingWeaning(
+      id,
+      farrowing.sow_id,
+      farrowing.farrowing_date,
+      weanedDate,
+      data.weaned_piglets,
+      tx,
+    );
 
-    await tx.breedingsows.update({
-      where: { sow_id: farrowing.sow_id, status: BREEDING_SOW_STATUSES.lactancia },
-      data: { status: BREEDING_SOW_STATUSES.vacia, last_weaning_date: weanedDate },
-    });
+    await applyWeaningToBreedingSow(farrowing.sow_id, weanedDate, tx);
 
     return updatedFarrowing;
   });
@@ -113,9 +112,7 @@ export const weanFarrowing = async (id: number, data: WeanFarrowingInput) => {
  */
 export const deleteFarrowing = async (id: number) => {
   try {
-    return await prisma.farrowings.delete({
-      where: { farrowing_id: id },
-    });
+    return await deleteFarrowingById(id);
   } catch (error) {
     if (isPrismaRecordNotFoundError(error)) {
       throw farrowingErrors.farrowingNotFound(id, "delete");
