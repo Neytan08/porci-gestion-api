@@ -50,6 +50,13 @@ export const parsePregnancyResult = (value: string): PregnancyResult | null => {
 };
 
 /**
+ * Restricts request-owned pregnancy values while keeping one canonical lifecycle value set.
+ * Cancellation and closure remain owned by retirement and farrowing workflows.
+ */
+export const canPregnancyResultBeProvidedByRequest = (result: PregnancyResult) =>
+  result !== PREGNANCY_RESULTS.cancelado && result !== PREGNANCY_RESULTS.cerrado;
+
+/**
  * Defines which pregnancy-result transitions are allowed by the current business flow.
  */
 export const isSupportedPregnancyResultTransition = (

@@ -3,7 +3,7 @@ import ApiError, { type ApiErrorLogContext } from "../../utils/apiError";
 
 export const MATING_EVENT_ERROR_CODES = {
   MATING_EVENT_BODY_INVALID: "MATING_EVENT_BODY_INVALID",
-  MATING_EVENT_UPDATE_BODY_INVALID: "MATING_EVENT_UPDATE_BODY_INVALID",
+  MATING_EVENT_PREGNANCY_UPDATE_BODY_INVALID: "MATING_EVENT_PREGNANCY_UPDATE_BODY_INVALID",
   MATING_EVENT_ID_INVALID: "MATING_EVENT_ID_INVALID",
   SOW_ID_INVALID: "SOW_ID_INVALID",
   BOAR_ID_INVALID: "BOAR_ID_INVALID",
@@ -20,6 +20,8 @@ export const MATING_EVENT_ERROR_CODES = {
   MIXED_CURRENT_PREGNANCY_RESULTS: "MIXED_CURRENT_PREGNANCY_RESULTS",
   PREGNANCY_RESULT_INVALID: "PREGNANCY_RESULT_INVALID",
   PREGNANCY_RESULT_TRANSITION_NOT_ALLOWED: "PREGNANCY_RESULT_TRANSITION_NOT_ALLOWED",
+  MATING_EVENT_HAS_FARROWINGS: "MATING_EVENT_HAS_FARROWINGS",
+  MATING_EVENT_TRANSACTION_STATE_CHANGED: "MATING_EVENT_TRANSACTION_STATE_CHANGED",
 } as const;
 
 type MatingEventErrorCode =
@@ -48,18 +50,18 @@ export const matingEventErrors = {
       { issues },
     ),
 
-  invalidUpdatePayload: (issues: ZodIssue[]) =>
+  invalidPregnancyUpdatePayload: (issues: ZodIssue[]) =>
     createMatingEventError(
       400,
-      MATING_EVENT_ERROR_CODES.MATING_EVENT_UPDATE_BODY_INVALID,
-      "The request body contains invalid fields for updating the mating event.",
-      "Cannot update mating event",
+      MATING_EVENT_ERROR_CODES.MATING_EVENT_PREGNANCY_UPDATE_BODY_INVALID,
+      "The request body contains invalid pregnancy-result update data.",
+      "Cannot update mating event pregnancy result",
       { issues },
     ),
 
   invalidMatingEventId: (
     rawValue: unknown,
-    operation: "retrieve" | "update" | "delete",
+    operation: "retrieve" | "delete",
   ) =>
     createMatingEventError(
       400,
@@ -107,7 +109,7 @@ export const matingEventErrors = {
 
   matingEventNotFound: (
     matingEventId: number,
-    operation: "retrieve" | "update" | "delete",
+    operation: "retrieve" | "delete",
   ) =>
     createMatingEventError(
       404,
@@ -157,12 +159,15 @@ export const matingEventErrors = {
       { matingIds },
     ),
 
-  invalidPregnancyResult: (pregnancyResult: unknown) =>
+  invalidPregnancyResult: (
+    pregnancyResult: unknown,
+    operation: "create" | "update" = "update",
+  ) =>
     createMatingEventError(
       400,
       MATING_EVENT_ERROR_CODES.PREGNANCY_RESULT_INVALID,
       "The pregnancy_result must be 'Pendiente', 'Positivo' or 'Negativo'.",
-      "Cannot update pregnancy result",
+      `Cannot ${operation} mating event pregnancy result`,
       { pregnancyResult },
     ),
 
@@ -227,5 +232,28 @@ export const matingEventErrors = {
       "The requested pregnancy result transition is not allowed.",
       "Cannot update pregnancy result",
       { currentPregnancyResult, nextPregnancyResult, requestedMatingIds },
+    ),
+
+  matingEventHasFarrowings: (matingEventId: number, farrowingCount?: number) =>
+    createMatingEventError(
+      409,
+      MATING_EVENT_ERROR_CODES.MATING_EVENT_HAS_FARROWINGS,
+      "The mating event cannot be deleted because it is referenced by farrowing history.",
+      "Cannot delete mating event with related farrowings",
+      { matingEventId, farrowingCount },
+    ),
+
+  transactionStateChanged: (
+    matingEventIds: number[],
+    reason: string,
+    expectedCount?: number,
+    actualCount?: number,
+  ) =>
+    createMatingEventError(
+      409,
+      MATING_EVENT_ERROR_CODES.MATING_EVENT_TRANSACTION_STATE_CHANGED,
+      "The reproductive state changed during the operation. Retry with the current data.",
+      "Cannot complete mating event transaction because reproductive state changed",
+      { matingEventIds, reason, expectedCount, actualCount },
     ),
 };

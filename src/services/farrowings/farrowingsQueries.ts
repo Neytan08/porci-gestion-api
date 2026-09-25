@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import prisma from "../../prismaClient";
 
 /**
@@ -34,15 +34,27 @@ export const getFarrowingsBySow = async (sowId: number) => {
   });
 };
 
-/** Loads every unweaned farrowing controlled by a retirement batch. */
+/** Locks every unweaned farrowing after retirement has locked its sows and mating events. */
 export const getActiveFarrowingsBySowIds = async (
   sowIds: number[],
-  queryClient: Pick<Prisma.TransactionClient, "farrowings">,
+  queryClient: Pick<Prisma.TransactionClient, "farrowings" | "$queryRaw">,
 ) => {
-  return await queryClient.farrowings.findMany({
-    where: { sow_id: { in: sowIds }, weaned_date: null },
-    select: { farrowing_id: true, sow_id: true },
-  });
+  if (sowIds.length === 0) {
+    return [];
+  }
+
+  const orderedSowIds = [...sowIds].sort((left, right) => left - right);
+
+  return await queryClient.$queryRaw<Array<{ farrowing_id: number; sow_id: number }>>(
+    Prisma.sql`
+      SELECT farrowing_id, sow_id
+      FROM farrowings
+      WHERE sow_id IN (${Prisma.join(orderedSowIds)})
+        AND weaned_date IS NULL
+      ORDER BY sow_id, farrowing_id
+      FOR UPDATE
+    `,
+  );
 };
 
 /** Returns the latest farrowing that is still controlled by the weaning workflow. */

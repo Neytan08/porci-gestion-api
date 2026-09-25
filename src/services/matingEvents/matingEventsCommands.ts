@@ -1,25 +1,35 @@
 import type { Prisma } from "@prisma/client";
-import type { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import prisma from "../../prismaClient";
+import {
+  isPrismaForeignKeyConstraintError,
+  isPrismaRecordNotFoundError,
+} from "../../utils/prismaErrors";
 import { getBoarStateForAssignment } from "../boars/boarsQueries";
 import { isActiveBoar } from "../boars/boarsRules";
 import {
-  getActiveBreedingSowWithStatus,
+  getActiveBreedingSowsWithStatusForUpdate,
+  getActiveBreedingSowWithStatusForUpdate,
+  getBreedingSowStateForUpdate,
   updateActiveBreedingSowStatus,
   updateActiveBreedingSowStatuses,
 } from "../breedingSows/breedingSowsQueries";
 import { BREEDING_SOW_STATUSES } from "../breedingSows/breedingSowsRules";
 import {
+  countMatingEventFarrowings,
   deleteMatingEventById,
   getBlockingMatingEventBySowId,
+  getMatingEventDeletionTarget,
+  getMatingEventForDeletion,
   getPregnancyUpdateEvents,
+  getPregnancyUpdateEventsForUpdate,
   insertMatingEvent,
   type PregnancyUpdateEvent,
-  updateMatingEventById,
   updateMatingEventPregnancyResults,
 } from "./matingEventsQueries";
 import { matingEventErrors } from "./matingEventErrors";
+import type { CreateMatingEventInput } from "./matingEventsTypes";
 import {
+  canPregnancyResultBeProvidedByRequest,
   getSowStatusAfterDeletingMatingEvent,
   getSowStatusForCreatedMatingEvent,
   isEmptySowStatus,
@@ -29,32 +39,15 @@ import {
   type PregnancyResult,
 } from "./pregnancyRules";
 
-
-const isPrismaRecordNotFoundError = (
-  error: unknown,
-): error is PrismaClientKnownRequestError => {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const prismaError = error as PrismaClientKnownRequestError;
-
-  return (
-    prismaError.name === "PrismaClientKnownRequestError" && prismaError.code === "P2025"
-  );
-};
-
 /**
  * Normalizes the requested pregnancy result and fails fast when the input is outside the domain rules.
  */
-const getNextPregnancyResultOrThrow = (pregnancyResult: string) => {
-  const nextPregnancyResult = parsePregnancyResult(pregnancyResult);
-
-  if (!nextPregnancyResult) {
+const getNextPregnancyResultOrThrow = (pregnancyResult: PregnancyResult) => {
+  if (!canPregnancyResultBeProvidedByRequest(pregnancyResult)) {
     throw matingEventErrors.invalidPregnancyResult(pregnancyResult);
   }
 
-  return nextPregnancyResult;
+  return pregnancyResult;
 };
 
 /**
@@ -76,8 +69,11 @@ const getUniqueMatingIdsOrThrow = (matingIds: number[]) => {
 const loadPregnancyUpdateEvents = async (
   tx: Prisma.TransactionClient,
   matingIds: number[],
+  lockRows = false,
 ) => {
-  const events = await getPregnancyUpdateEvents(matingIds, tx);
+  const events = lockRows
+    ? await getPregnancyUpdateEventsForUpdate(matingIds, tx)
+    : await getPregnancyUpdateEvents(matingIds, tx);
 
   if (events.length !== matingIds.length) {
     const foundIds = new Set(events.map(({ mating_id }) => mating_id));
@@ -180,7 +176,16 @@ const updateAffectedSowStatuses = async (
 
   const sowIds = Array.from(new Set(events.map(({ sow_id }) => sow_id)));
 
-  await updateActiveBreedingSowStatuses(sowIds, nextStatus, tx);
+  const result = await updateActiveBreedingSowStatuses(sowIds, nextStatus, tx);
+
+  if (result.count !== sowIds.length) {
+    throw matingEventErrors.transactionStateChanged(
+      events.map(({ mating_id }) => mating_id),
+      "Not every affected sow could complete the required status transition.",
+      sowIds.length,
+      result.count,
+    );
+  }
 };
 
 /**
@@ -211,10 +216,17 @@ const ensureBoarCanBeAssigned = async (tx: Prisma.TransactionClient, boarId: num
   if (!isActiveBoar(boar)) throw matingEventErrors.boarRetired(boarId);
 };
 
-/** Creates a mating event when the sow and selected boar are eligible. */
-export const createMatingEvent = async (data: Prisma.matingeventsUncheckedCreateInput) => {
+/**
+ * Creates a mating event after locking its sow, then its selected boar, so concurrent
+ * reproductive and retirement workflows must revalidate after this transaction.
+ */
+export const createMatingEvent = async (data: CreateMatingEventInput) => {
+  if (!canPregnancyResultBeProvidedByRequest(data.pregnancy_result)) {
+    throw matingEventErrors.invalidPregnancyResult(data.pregnancy_result, "create");
+  }
+
   return await prisma.$transaction(async (tx) => {
-    const sow = await getActiveBreedingSowWithStatus(data.sow_id, tx);
+    const sow = await getActiveBreedingSowWithStatusForUpdate(data.sow_id, tx);
 
     if (!sow) {
       throw matingEventErrors.sowNotFound(data.sow_id);
@@ -243,29 +255,45 @@ export const createMatingEvent = async (data: Prisma.matingeventsUncheckedCreate
 };
 
 /**
- * Persists direct field changes on an existing mating event.
- */
-export const updateMatingEvent = async (id: number, data: Prisma.matingeventsUncheckedUpdateInput) => {
-  try {
-    return await prisma.$transaction(async (tx) => {
-      if (typeof data.boar_id === "number") await ensureBoarCanBeAssigned(tx, data.boar_id);
-      return await updateMatingEventById(id, data, tx);
-    });
-  } catch (error) {
-    if (isPrismaRecordNotFoundError(error)) {
-      throw matingEventErrors.matingEventNotFound(id, "update");
-    }
-
-    throw error;
-  }
-};
-
-/**
- * Removes one mating event by id.
+ * Removes one unreferenced mating event using the shared sow-then-event lock order.
  */
 export const deleteMatingEvent = async (id: number) => {
+  const deletionTarget = await getMatingEventDeletionTarget(id);
+
+  if (!deletionTarget) {
+    throw matingEventErrors.matingEventNotFound(id, "delete");
+  }
+
   try {
     return await prisma.$transaction(async (tx) => {
+      const sow = await getBreedingSowStateForUpdate(deletionTarget.sow_id, tx);
+
+      if (!sow) {
+        throw matingEventErrors.transactionStateChanged(
+          [id],
+          "The mating event sow is no longer available.",
+        );
+      }
+
+      const event = await getMatingEventForDeletion(id, tx);
+
+      if (!event) {
+        throw matingEventErrors.matingEventNotFound(id, "delete");
+      }
+
+      if (event.sow_id !== deletionTarget.sow_id) {
+        throw matingEventErrors.transactionStateChanged(
+          [id],
+          "The mating event sow changed before deletion locks were acquired.",
+        );
+      }
+
+      const farrowingCount = await countMatingEventFarrowings(id, tx);
+
+      if (farrowingCount > 0) {
+        throw matingEventErrors.matingEventHasFarrowings(id, farrowingCount);
+      }
+
       const deletedEvent = await deleteMatingEventById(id, tx);
 
       await restoreSowStatusAfterDeletingPositiveEvent(
@@ -281,19 +309,53 @@ export const deleteMatingEvent = async (id: number) => {
       throw matingEventErrors.matingEventNotFound(id, "delete");
     }
 
+    if (isPrismaForeignKeyConstraintError(error)) {
+      throw matingEventErrors.matingEventHasFarrowings(id);
+    }
+
     throw error;
   }
 };
 
 /**
- * Updates one or many mating events and applies the related sow status change only for supported transitions.
+ * Locks affected sows and then mating events in identifier order before applying
+ * a supported pregnancy-result and sow-status transition atomically.
  */
-export const updatePregnancyResult = async (matingIds: number[], pregnancyResult: string) => {
+export const updatePregnancyResult = async (
+  matingIds: number[],
+  pregnancyResult: PregnancyResult,
+) => {
   const nextPregnancyResult = getNextPregnancyResultOrThrow(pregnancyResult);
   const uniqueMatingIds = getUniqueMatingIdsOrThrow(matingIds);
 
   return await prisma.$transaction(async (tx) => {
-    const events = await loadPregnancyUpdateEvents(tx, uniqueMatingIds);
+    const preliminaryEvents = await loadPregnancyUpdateEvents(tx, uniqueMatingIds);
+    const sowIds = Array.from(new Set(preliminaryEvents.map(({ sow_id }) => sow_id))).sort(
+      (left, right) => left - right,
+    );
+    const lockedSows = await getActiveBreedingSowsWithStatusForUpdate(sowIds, tx);
+
+    if (lockedSows.length !== sowIds.length) {
+      throw matingEventErrors.transactionStateChanged(
+        uniqueMatingIds,
+        "One or more affected sows are missing or retired.",
+        sowIds.length,
+        lockedSows.length,
+      );
+    }
+
+    const events = await loadPregnancyUpdateEvents(tx, uniqueMatingIds, true);
+    const preliminarySowByEventId = new Map(
+      preliminaryEvents.map(({ mating_id, sow_id }) => [mating_id, sow_id]),
+    );
+
+    if (events.some((event) => preliminarySowByEventId.get(event.mating_id) !== event.sow_id)) {
+      throw matingEventErrors.transactionStateChanged(
+        uniqueMatingIds,
+        "A mating event relationship changed before locks were acquired.",
+      );
+    }
+
     const currentPregnancyResult = getCurrentPregnancyResultOrThrow(events);
 
     if (!isSupportedPregnancyResultTransition(currentPregnancyResult, nextPregnancyResult)) {
@@ -304,14 +366,21 @@ export const updatePregnancyResult = async (matingIds: number[], pregnancyResult
       );
     }
 
-    const updatedEvents =
-      currentPregnancyResult === nextPregnancyResult
-        ? { count: 0 }
-        : await updateMatingEventPregnancyResults(
-            uniqueMatingIds,
-            nextPregnancyResult,
-            tx,
-          );
+    const updatedEvents = currentPregnancyResult === nextPregnancyResult
+      ? { count: 0 }
+      : await updateMatingEventPregnancyResults(uniqueMatingIds, nextPregnancyResult, tx);
+
+    if (
+      currentPregnancyResult !== nextPregnancyResult &&
+      updatedEvents.count !== uniqueMatingIds.length
+    ) {
+      throw matingEventErrors.transactionStateChanged(
+        uniqueMatingIds,
+        "Not every mating event could complete the requested pregnancy transition.",
+        uniqueMatingIds.length,
+        updatedEvents.count,
+      );
+    }
 
     await updateAffectedSowStatuses(
       tx,

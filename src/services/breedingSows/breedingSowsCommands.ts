@@ -226,7 +226,10 @@ const ensureRetirementDatesAreConsistent = (
   }
 };
 
-/** Retires a sow batch while cancelling mating events and force-closing open farrowings. */
+/**
+ * Locks sows in identifier order before cancelling mating events, closing open
+ * farrowings, and retiring the batch in one transaction.
+ */
 export const retireBreedingSow = async (
   ids: number[],
   data: RetireBreedingSowInput,
@@ -240,9 +243,8 @@ export const retireBreedingSow = async (
     const removalDate = data.removal_date ?? new Date();
     ensureRetirementDatesAreConsistent(currentSows, removalDate);
 
-    const activeFarrowings = await getActiveFarrowingsBySowIds(uniqueSowIds, tx);
-
     await cancelActiveMatingEventsBySowIds(uniqueSowIds, tx);
+    const activeFarrowings = await getActiveFarrowingsBySowIds(uniqueSowIds, tx);
     await closeFarrowingsForRetirement(
       activeFarrowings.map(({ farrowing_id }) => farrowing_id),
       removalDate,

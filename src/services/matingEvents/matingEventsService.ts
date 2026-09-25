@@ -1,9 +1,6 @@
-import type { Prisma } from "@prisma/client";
-import { getActiveBreedingSowWithStatus } from "../breedingSows/breedingSowsQueries";
 import {
   createMatingEvent,
   deleteMatingEvent,
-  updateMatingEvent,
   updatePregnancyResult as updateMatingEventsPregnancyResult,
 } from "./matingEventsCommands";
 import {
@@ -13,6 +10,8 @@ import {
   getMatingEventsBySow,
   getMatingEventsGroupedByPregnancyResult,
 } from "./matingEventsQueries";
+import type { CreateMatingEventInput } from "./matingEventsTypes";
+import type { PregnancyResult } from "./pregnancyRules";
 
 /**
  * Keeps the public mating-events service API stable while delegating each responsibility to smaller modules.
@@ -22,20 +21,12 @@ class MatingEventsService {
     return await getAllMatingEvents();
   }
 
-  async getSowByIdWithStatus(sowId: number) {
-    return await getActiveBreedingSowWithStatus(sowId);
-  }
-
   async getById(id: number) {
     return await getMatingEventById(id);
   }
 
-  async create(data: Prisma.matingeventsUncheckedCreateInput) {
+  async create(data: CreateMatingEventInput) {
     return await createMatingEvent(data);
-  }
-
-  async update(id: number, data: Prisma.matingeventsUncheckedUpdateInput) {
-    return await updateMatingEvent(id, data);
   }
 
   async delete(id: number) {
@@ -54,7 +45,7 @@ class MatingEventsService {
     return await getMatingEventsGroupedByPregnancyResult();
   }
 
-  async updatePregnancyResult(matingIds: number[], pregnancyResult: string) {
+  async updatePregnancyResult(matingIds: number[], pregnancyResult: PregnancyResult) {
     return await updateMatingEventsPregnancyResult(matingIds, pregnancyResult);
   }
 }

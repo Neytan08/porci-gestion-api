@@ -5,11 +5,11 @@ import { isPrismaRecordNotFoundError } from "../../utils/prismaErrors";
 import {
   applyFarrowingToBreedingSow,
   applyWeaningToBreedingSow,
-  getActiveBreedingSowWithStatus,
+  getActiveBreedingSowWithStatusForUpdate,
 } from "../breedingSows/breedingSowsQueries";
 import { BREEDING_SOW_STATUSES, isBeforeDate } from "../breedingSows/breedingSowsRules";
 import {
-  getBlockingMatingEventBySowId,
+  getBlockingMatingEventBySowIdForUpdate,
   updateMatingEventPregnancyResult,
 } from "../matingEvents/matingEventsQueries";
 import { PREGNANCY_RESULTS } from "../matingEvents/pregnancyRules";
@@ -29,11 +29,12 @@ export type CreateFarrowingInput = Omit<
 /**
  * A farrowing can only close a pregnancy that was confirmed as positive. Once
  * the record is created, that mating event is closed and the sow enters the
- * lactation stage in the same transaction.
+ * lactation stage in the same transaction. The command locks the sow before
+ * the mating event to match every reproductive write workflow.
  */
 export const createFarrowing = async (data: CreateFarrowingInput) => {
   return await prisma.$transaction(async (tx) => {
-    const sow = await getActiveBreedingSowWithStatus(data.sow_id, tx);
+    const sow = await getActiveBreedingSowWithStatusForUpdate(data.sow_id, tx);
 
     if (!sow) {
       throw farrowingErrors.sowNotFound(data.sow_id);
@@ -43,7 +44,7 @@ export const createFarrowing = async (data: CreateFarrowingInput) => {
       throw farrowingErrors.sowNotGestating(data.sow_id, sow.status);
     }
 
-    const matingEvent = await getBlockingMatingEventBySowId(data.sow_id, tx);
+    const matingEvent = await getBlockingMatingEventBySowIdForUpdate(data.sow_id, tx);
 
     if (!matingEvent || matingEvent.pregnancy_result !== PREGNANCY_RESULTS.positivo) {
       throw farrowingErrors.positiveMatingEventNotFound(data.sow_id);

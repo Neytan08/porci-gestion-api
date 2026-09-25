@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import prisma from "../../prismaClient";
 import {
   BREEDING_SOW_STATUSES,
@@ -16,10 +16,16 @@ type BreedingSowsQueryClient = Pick<
   "breedingsows" | "$queryRaw"
 >;
 
-const activeBreedingSowWhere = {
+export const activeBreedingSowWhere = {
   removal_date: null,
   OR: [{ status: null }, { status: { not: BREEDING_SOW_STATUSES.retirada } }],
 } satisfies Prisma.breedingsowsWhereInput;
+
+type LockedBreedingSowStatus = {
+  sow_id: number;
+  status: string | null;
+  removal_date: Date | null;
+};
 
 /** Returns the active breeding-sow collection with breed data. */
 export const getAllBreedingSows = async () => {
@@ -58,6 +64,60 @@ export const getActiveBreedingSowWithStatus = async (
   });
 };
 
+/** Locks one active sow before a reproductive command evaluates or changes its lifecycle. */
+export const getActiveBreedingSowWithStatusForUpdate = async (
+  sowId: number,
+  queryClient: BreedingSowsQueryClient,
+) => {
+  const sows = await queryClient.$queryRaw<LockedBreedingSowStatus[]>(Prisma.sql`
+    SELECT sow_id, status, removal_date
+    FROM breedingsows
+    WHERE sow_id = ${sowId}
+      AND removal_date IS NULL
+      AND (status IS NULL OR status <> ${BREEDING_SOW_STATUSES.retirada})
+    FOR UPDATE
+  `);
+
+  return sows[0] ?? null;
+};
+
+/** Locks active sows in identifier order before a batch reproductive transition. */
+export const getActiveBreedingSowsWithStatusForUpdate = async (
+  sowIds: number[],
+  queryClient: BreedingSowsQueryClient,
+) => {
+  if (sowIds.length === 0) {
+    return [];
+  }
+
+  const orderedSowIds = [...sowIds].sort((left, right) => left - right);
+
+  return await queryClient.$queryRaw<LockedBreedingSowStatus[]>(Prisma.sql`
+    SELECT sow_id, status, removal_date
+    FROM breedingsows
+    WHERE sow_id IN (${Prisma.join(orderedSowIds)})
+      AND removal_date IS NULL
+      AND (status IS NULL OR status <> ${BREEDING_SOW_STATUSES.retirada})
+    ORDER BY sow_id
+    FOR UPDATE
+  `);
+};
+
+/** Locks a sow regardless of retirement state so deletion can follow the shared lock order. */
+export const getBreedingSowStateForUpdate = async (
+  sowId: number,
+  queryClient: BreedingSowsQueryClient,
+) => {
+  const sows = await queryClient.$queryRaw<LockedBreedingSowStatus[]>(Prisma.sql`
+    SELECT sow_id, status, removal_date
+    FROM breedingsows
+    WHERE sow_id = ${sowId}
+    FOR UPDATE
+  `);
+
+  return sows[0] ?? null;
+};
+
 /** Finds a sow tag through the same normalized expression enforced by the database index. */
 export const getBreedingSowByNormalizedTagNumber = async (
   sowTagNumber: string,
@@ -92,21 +152,29 @@ export const insertBreedingSow = async (
   return await queryClient.breedingsows.create({ data });
 };
 
-/** Loads the active state required to validate an ordinary sow update. */
+/** Locks the active state required to validate an ordinary sow update. */
 export const getActiveBreedingSowForUpdate = async (
   id: number,
   queryClient: BreedingSowsQueryClient,
 ) => {
-  return await queryClient.breedingsows.findFirst({
-    where: { AND: [{ sow_id: id }, activeBreedingSowWhere] },
-    select: {
-      sow_id: true,
-      entry_date: true,
-      last_weaning_date: true,
-      removal_date: true,
-      status: true,
-    },
-  });
+  const sows = await queryClient.$queryRaw<
+    Array<{
+      sow_id: number;
+      entry_date: Date;
+      last_weaning_date: Date | null;
+      removal_date: Date | null;
+      status: string | null;
+    }>
+  >(Prisma.sql`
+    SELECT sow_id, entry_date, last_weaning_date, removal_date, status
+    FROM breedingsows
+    WHERE sow_id = ${id}
+      AND removal_date IS NULL
+      AND (status IS NULL OR status <> ${BREEDING_SOW_STATUSES.retirada})
+    FOR UPDATE
+  `);
+
+  return sows[0] ?? null;
 };
 
 /** Applies an ordinary update only while the sow remains active. */
@@ -136,15 +204,26 @@ export const getBreedingSowsForRetirement = async (
   sowIds: number[],
   queryClient: BreedingSowsQueryClient,
 ) => {
-  return await queryClient.breedingsows.findMany({
-    where: { sow_id: { in: sowIds } },
-    select: {
-      sow_id: true,
-      entry_date: true,
-      status: true,
-      removal_date: true,
-    },
-  });
+  if (sowIds.length === 0) {
+    return [];
+  }
+
+  const orderedSowIds = [...sowIds].sort((left, right) => left - right);
+
+  return await queryClient.$queryRaw<
+    Array<{
+      sow_id: number;
+      entry_date: Date;
+      status: string | null;
+      removal_date: Date | null;
+    }>
+  >(Prisma.sql`
+    SELECT sow_id, entry_date, status, removal_date
+    FROM breedingsows
+    WHERE sow_id IN (${Prisma.join(orderedSowIds)})
+    ORDER BY sow_id
+    FOR UPDATE
+  `);
 };
 
 /** Marks an active sow batch as retired without changing last-weaning history. */

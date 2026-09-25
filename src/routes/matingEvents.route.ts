@@ -52,11 +52,18 @@ router.get("/", asyncHandler(matingEventsController.getAll.bind(matingEventsCont
  *         name: id
  *         schema:
  *           type: integer
+ *           minimum: 1
  *         required: true
  *         description: ID of the mating event
  *     responses:
  *       200:
  *         description: Mating event found
+ *       400:
+ *         description: Invalid mating event id
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  *       404:
  *         description: Mating event not found
  *         content:
@@ -71,6 +78,7 @@ router.get("/:id", asyncHandler(matingEventsController.getById.bind(matingEvents
  * /matingevents:
  *   post:
  *     summary: Create a new mating event
+ *     description: Starts a reproductive workflow for an empty sow. Positivo moves the sow to gestation; Pendiente and Negativo leave it empty.
  *     tags: [MatingEvents]
  *     requestBody:
  *       required: true
@@ -78,22 +86,27 @@ router.get("/:id", asyncHandler(matingEventsController.getById.bind(matingEvents
  *         application/json:
  *           schema:
  *             type: object
+ *             required: [sow_id, reproduction_date, reproduction_type, pregnancy_result]
  *             properties:
  *               sow_id:
  *                 type: integer
+ *                 minimum: 1
  *                 example: 5
  *               boar_id:
  *                 type: integer
+ *                 minimum: 1
  *                 example: 1
  *               reproduction_date:
  *                 type: string
- *                 format: date
+ *                 description: Calendar date supplied as M/D/YYYY, YYYY-MM-DD, or an ISO 8601 timestamp with an offset
  *                 example: "2025-10-05"
  *               reproduction_type:
  *                 type: string
+ *                 enum: [Monta Natural, Inseminación Artificial]
  *                 example: "Inseminación Artificial"
  *               pregnancy_result:
  *                 type: string
+ *                 enum: [Pendiente, Positivo, Negativo]
  *                 example: "Pendiente"
  *               notes:
  *                 type: string
@@ -108,7 +121,11 @@ router.get("/:id", asyncHandler(matingEventsController.getById.bind(matingEvents
  *             schema:
  *               $ref: '#/components/schemas/ApiErrorResponse'
  *       404:
- *         description: Selected boar not found
+ *         description: Selected sow or boar not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  *       409:
  *         description: The sow is not eligible or the selected boar is retired
  *         content:
@@ -121,62 +138,6 @@ router.post("/", asyncHandler(matingEventsController.create.bind(matingEventsCon
 /**
  * @swagger
  * /matingevents/{id}:
- *   put:
- *     summary: Update an existing mating event
- *     tags: [MatingEvents]
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: integer
- *         required: true
- *         description: ID of the mating event to update
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               boar_id:
- *                 type: integer
- *                 example: 1
- *               insemination_type:
- *                 type: string
- *                 example: "Artificial"
- *               insemination_date:
- *                 type: string
- *                 format: date
- *                 example: "2025-10-05"
- *               pregnancy_result:
- *                 type: string
- *                 example: "Pendiente"
- *               notes:
- *                 type: string
- *                 example: "Updated notes after check"
- *     responses:
- *       200:
- *         description: Mating event updated successfully
- *       400:
- *         description: Invalid update payload or invalid identifier
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiErrorResponse'
- *       404:
- *         description: Mating event or selected boar not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiErrorResponse'
- *       409:
- *         description: Selected boar is retired
- */
-router.put("/:id", asyncHandler(matingEventsController.update.bind(matingEventsController)));
-
-/**
- * @swagger
- * /matingevents/{id}:
  *   delete:
  *     summary: Delete a mating event by ID
  *     tags: [MatingEvents]
@@ -185,13 +146,26 @@ router.put("/:id", asyncHandler(matingEventsController.update.bind(matingEventsC
  *         name: id
  *         schema:
  *           type: integer
+ *           minimum: 1
  *         required: true
  *         description: ID of the mating event to delete
  *     responses:
  *       204:
  *         description: Mating event deleted successfully
+ *       400:
+ *         description: Invalid mating event id
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  *       404:
  *         description: Mating event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiErrorResponse'
+ *       409:
+ *         description: Mating event is referenced by farrowing history and cannot be deleted
  *         content:
  *           application/json:
  *             schema:
@@ -210,6 +184,7 @@ router.delete("/:id", asyncHandler(matingEventsController.delete.bind(matingEven
  *         name: sowId
  *         schema:
  *           type: integer
+ *           minimum: 1
  *         required: true
  *         description: ID of the sow
  *     responses:
@@ -238,6 +213,7 @@ router.get(
  *         name: boarId
  *         schema:
  *           type: integer
+ *           minimum: 1
  *         required: true
  *         description: ID of the boar
  *     responses:
@@ -263,7 +239,7 @@ router.get(
  *     tags: [MatingEvents]
  *     responses:
  *       200:
- *         description: List of mating events grouped by pregnancy result
+ *         description: Mating events grouped only as Pendiente, Positivo, or Negativo; cancelled, closed, and null results are excluded
  */
 router.get(
   "/grouped/pregnancy-result",
@@ -282,16 +258,21 @@ router.get(
  *         application/json:
  *           schema:
  *             type: object
+ *             required: [mating_ids, pregnancy_result]
  *             properties:
  *               mating_ids:
  *                 oneOf:
  *                   - type: integer
+ *                     minimum: 1
  *                   - type: array
+ *                     minItems: 1
  *                     items:
  *                       type: integer
+ *                       minimum: 1
  *                 example: [1, 2]
  *               pregnancy_result:
  *                 type: string
+ *                 enum: [Pendiente, Positivo, Negativo]
  *                 example: Positivo
  *     responses:
  *       200:

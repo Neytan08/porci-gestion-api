@@ -11,10 +11,7 @@ import {
   getBreedingSowByNormalizedTagNumber,
   getBreedingSowsByStatus,
 } from "./breedingSowsQueries";
-import {
-  BREEDING_SOW_STATUSES,
-  type BreedingSowStatus,
-} from "./breedingSowsRules";
+import type { BREEDING_SOW_STATUSES, BreedingSowStatus } from "./breedingSowsRules";
 import type {
   CreateBreedingSowInput,
   RetireBreedingSowInput,
