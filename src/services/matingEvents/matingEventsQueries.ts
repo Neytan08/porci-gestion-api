@@ -16,6 +16,10 @@ export type PregnancyUpdateEvent = {
   pregnancy_result: string | null;
 };
 
+type LockedFarrowingMatingEvent = PregnancyUpdateEvent & {
+  reproduction_date: Date;
+};
+
 /**
  * Returns the full mating-event collection without applying business rules.
  */
@@ -186,8 +190,8 @@ export const getBlockingMatingEventBySowIdForUpdate = async (
   sowId: number,
   queryClient: MatingEventsLockClient,
 ) => {
-  const events = await queryClient.$queryRaw<PregnancyUpdateEvent[]>(Prisma.sql`
-    SELECT mating_id, sow_id, pregnancy_result
+  const events = await queryClient.$queryRaw<LockedFarrowingMatingEvent[]>(Prisma.sql`
+    SELECT mating_id, sow_id, pregnancy_result, reproduction_date
     FROM matingevents
     WHERE sow_id = ${sowId}
       AND pregnancy_result IN (${PREGNANCY_RESULTS.pendiente}, ${PREGNANCY_RESULTS.positivo})
@@ -277,5 +281,21 @@ export const updateMatingEventPregnancyResult = async (
   return await queryClient.matingevents.update({
     where: { mating_id: matingId },
     data: { pregnancy_result: pregnancyResult },
+  });
+};
+
+/** Restores the closed mating event when its unweaned farrowing is deleted. */
+export const restoreMatingEventAfterFarrowingDeletion = async (
+  matingId: number,
+  sowId: number,
+  queryClient: MatingEventsQueryClient,
+) => {
+  return await queryClient.matingevents.updateMany({
+    where: {
+      mating_id: matingId,
+      sow_id: sowId,
+      pregnancy_result: PREGNANCY_RESULTS.cerrado,
+    },
+    data: { pregnancy_result: PREGNANCY_RESULTS.positivo },
   });
 };

@@ -1,11 +1,21 @@
 import { z } from "zod";
+import { parseCalendarDateInput } from "../utils/calendarDateInput";
 
-const dateStringSchema = (fieldName: string) =>
-  z
-    .string()
-    .refine((date) => !Number.isNaN(Date.parse(date)), {
-      message: `Invalid ${fieldName} format`,
-    });
+/** Validates supported calendar input and normalizes it before domain workflows run. */
+const calendarDateSchema = (fieldName: string) =>
+  z.string().transform((value, context) => {
+    const date = parseCalendarDateInput(value);
+
+    if (!date) {
+      context.addIssue({
+        code: "custom",
+        message: `Invalid ${fieldName}. Expected M/D/YYYY, YYYY-MM-DD, or an ISO 8601 timestamp with an offset`,
+      });
+      return z.NEVER;
+    }
+
+    return date;
+  });
 
 const nonNegativeIntegerSchema = z.number().int().nonnegative();
 const optionalCountWithZeroDefault = nonNegativeIntegerSchema.optional().default(0);
@@ -13,7 +23,7 @@ const optionalCountWithZeroDefault = nonNegativeIntegerSchema.optional().default
 // The planned weaning_date is derived; actual weaning fields belong to the wean endpoint.
 export const farrowingsSchema = z.object({
   sow_id: z.number().int().positive(),
-  farrowing_date: dateStringSchema("farrowing_date"),
+  farrowing_date: calendarDateSchema("farrowing_date"),
   male_piglets: nonNegativeIntegerSchema,
   female_piglets: nonNegativeIntegerSchema,
   still_births: optionalCountWithZeroDefault,
@@ -21,15 +31,8 @@ export const farrowingsSchema = z.object({
   notes: z.string().optional(),
 });
 
-// Partial schema allows optional fields for updates
-// export const farrowingUpdateSchema = farrowingsSchema.partial();
-
 // Both values are required only when completing the weaning workflow. Zero is valid.
 export const farrowingWeanSchema = z.object({
-  weaned_date: z.string().refine((date) => !Number.isNaN(Date.parse(date)), {
-      message: "Invalid weaned_date format",
-    }),
+  weaned_date: calendarDateSchema("weaned_date"),
   weaned_piglets: nonNegativeIntegerSchema,
 });
-
-export type WeanFarrowingInput = z.infer<typeof farrowingWeanSchema>;

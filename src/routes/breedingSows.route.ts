@@ -260,6 +260,7 @@ router.put("/:id", asyncHandler(BreedingSowController.update.bind(BreedingSowCon
  * /breedingsows/retire:
  *   patch:
  *     summary: Retire one or many breeding sows
+ *     description: Retirement is allowed from every lifecycle stage. Active farrowings are administratively closed with weaned_date equal to removal_date and zero weaned_piglets; last_weaning_date remains the most recent actual weaning.
  *     tags: [BreedingSows]
  *     requestBody:
  *       required: true
@@ -288,7 +289,7 @@ router.put("/:id", asyncHandler(BreedingSowController.update.bind(BreedingSowCon
  *       200:
  *         description: Sows retired and open mating/farrowing workflows closed successfully
  *       400:
- *         description: Invalid IDs, payload, or removal date
+ *         description: Invalid IDs or payload, removal before sow entry, or removal before an active farrowing
  *       404:
  *         description: One or more breeding sows were not found
  *       409:

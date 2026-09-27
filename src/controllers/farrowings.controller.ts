@@ -6,12 +6,14 @@ import logger from "../utils/logger";
 import { parsePositiveIdOrThrow } from "../utils/requestParsing";
 
 class FarrowingsController {
+    /** Returns the full farrowing collection. */
     async getAll(_: Request, res: Response) {
         const farrowings = await FarrowingsService.getAll();
         logger.info("Fetched farrowings", { count: farrowings.length });
         res.json(farrowings);
     }
 
+    /** Validates the identifier and returns one farrowing. */
     async getById(req: Request, res: Response) {
         const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
             farrowingErrors.invalidFarrowingId(rawValue, "retrieve"),
@@ -26,6 +28,7 @@ class FarrowingsController {
         return res.json(farrowing);
     }
 
+    /** Validates and creates a farrowing through its reproductive workflow. */
     async create(req: Request, res: Response) {
         const parseResult = farrowingsSchema.safeParse(req.body);
 
@@ -41,25 +44,6 @@ class FarrowingsController {
         });
         res.status(201).json(newFarrowing);
     }
-
-    // async update(req: Request, res: Response) {
-    //     const parseResult = farrowingUpdateSchema.safeParse(req.body);
-
-    //     if (!parseResult.success) {
-    //         throw farrowingErrors.invalidUpdatePayload(parseResult.error.issues);
-    //     }
-
-    //     const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
-    //         farrowingErrors.invalidFarrowingId(rawValue, "update"),
-    //     );
-    //     const updated = await FarrowingsService.update(id, parseResult.data);
-    //     logger.info("Updated farrowing", {
-    //         farrowingId: updated.farrowing_id,
-    //         sowId: updated.sow_id,
-    //         matingId: updated.mating_id,
-    //     });
-    //     res.json(updated);
-    // }
 
     /** Validates the request before completing the weaning and sow status transaction. */
     async wean(req: Request, res: Response) {
@@ -82,6 +66,7 @@ class FarrowingsController {
         res.json(updated);
     }
 
+    /** Deletes an unweaned farrowing and restores the preceding reproductive state. */
     async delete(req: Request, res: Response) {
         const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
             farrowingErrors.invalidFarrowingId(rawValue, "delete"),
@@ -96,6 +81,7 @@ class FarrowingsController {
         res.status(204).send();
     }
 
+    /** Returns every farrowing registered for one validated sow identifier. */
     async getAllFarrowingsBySow(req: Request, res: Response) {
         const sowId = parsePositiveIdOrThrow(req.params.sowId, farrowingErrors.invalidSowId);
         const result = await FarrowingsService.getAllFarrowingsBySow(sowId);

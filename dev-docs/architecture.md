@@ -123,19 +123,26 @@ Do not change the database schema, data model, migration state, or perform destr
 
 Before proposing a database change, explain the required change, why it is needed, affected behavior, risks, and relevant alternatives.
 
-## Reproductive Transaction Locking
-Workflows that create, transition, close, or delete mating controlled reproductive state must serialize their decisions with PostgreSQL row locks inside the owning Prisma transaction.
+## Concurrency and Transactional Consistency
+Write operations must preserve domain invariants when multiple requests can modify the same mutable state concurrently.
 
-Use this lock order consistently:
-1. lock affected sow rows in ascending `sow_id` order;
-2. lock affected mating-event rows in ascending `mating_id` order;
-3. lock or mutate related boar and farrowing records only after the applicable sow and mating-event locks are held;
-4. re-read and revalidate mutable state after locks are acquired;
-5. verify affected-row counts before committing.
+Pay particular attention to read → validate → write workflows, because the state used for a decision may change before the final write.
 
-A transaction waiting for another workflow must evaluate the committed state it receives after the wait rather than continue from a stale pre-lock decision.
+Use the simplest mechanism that correctly protects the invariant:
 
-Locking SQL belongs in the relevant Queries module. Commands own the transaction, acquire locks in the documented order, coordinate cross entity Queries, and raise an entity specific conflict when the locked state or affected row count no longer matches the requested operation.
+- database constraints;
+- conditional writes;
+- transactions;
+- optimistic concurrency;
+- row locks when a multi-step workflow requires stable mutable state.
+
+Do not introduce row locks by default.
+
+When a multi-step workflow depends on multiple pieces of mutable state, protect all state that participates in the invariant using the simplest appropriate concurrency mechanism. Explicit row locks are required only for records that must remain stable while the decision is evaluated and persisted.
+
+When explicit row locks are used, acquire them in a consistent deterministic order and revalidate mutable state after the locks are acquired.
+
+If an expected state or affected-row count no longer matches when the write occurs, treat the operation as a domain conflict rather than continuing from stale data.
 
 ## Logging
 Use structured logging for significant successful operations and useful diagnostic context.

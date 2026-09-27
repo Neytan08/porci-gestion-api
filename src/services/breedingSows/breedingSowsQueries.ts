@@ -307,3 +307,28 @@ export const applyWeaningToBreedingSow = async (
     },
   });
 };
+
+/** Restores a lactating sow after deleting its only active, unweaned farrowing. */
+export const restoreBreedingSowAfterFarrowingDeletion = async (
+  sowId: number,
+  lastWeaningDate: Date | null,
+  queryClient: BreedingSowsQueryClient,
+) => {
+  return await queryClient.breedingsows.updateMany({
+    where: {
+      AND: [
+        {
+          sow_id: sowId,
+          status: BREEDING_SOW_STATUSES.lactancia,
+          farrowing_number: { gt: 0 },
+        },
+        activeBreedingSowWhere,
+      ],
+    },
+    data: {
+      farrowing_number: { decrement: 1 },
+      status: BREEDING_SOW_STATUSES.gestacion,
+      last_weaning_date: lastWeaningDate,
+    },
+  });
+};

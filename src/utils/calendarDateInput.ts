@@ -1,4 +1,4 @@
-/** Keeps the input's calendar day when converting a date or offset timestamp for @db.Date. */
+/** Keeps the input's calendar day when normalizing date-like API values to UTC midnight. */
 export const parseCalendarDateInput = (value: string): Date | null => {
   const usDate = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value);
   const isoDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);

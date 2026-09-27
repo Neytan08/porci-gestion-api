@@ -10,6 +10,7 @@ import {
   closeFarrowingsForRetirement,
   getActiveFarrowingsBySowIds,
 } from "../farrowings/farrowingsQueries";
+import { isFarrowingCompletionDateValid } from "../farrowings/farrowingsRules";
 import {
   cancelActiveMatingEventsBySowIds,
   countMatingEventsBySowId,
@@ -226,6 +227,23 @@ const ensureRetirementDatesAreConsistent = (
   }
 };
 
+/** Keeps administrative farrowing closure on or after each farrowing date. */
+const ensureRetirementFarrowingDatesAreConsistent = (
+  farrowings: Awaited<ReturnType<typeof getActiveFarrowingsBySowIds>>,
+  removalDate: Date,
+) => {
+  for (const farrowing of farrowings) {
+    if (!isFarrowingCompletionDateValid(removalDate, farrowing.farrowing_date)) {
+      throw breedingSowErrors.removalDateBeforeFarrowingDate(
+        farrowing.sow_id,
+        farrowing.farrowing_id,
+        farrowing.farrowing_date,
+        removalDate,
+      );
+    }
+  }
+};
+
 /**
  * Locks sows in identifier order before cancelling mating events, closing open
  * farrowings, and retiring the batch in one transaction.
@@ -245,11 +263,20 @@ export const retireBreedingSow = async (
 
     await cancelActiveMatingEventsBySowIds(uniqueSowIds, tx);
     const activeFarrowings = await getActiveFarrowingsBySowIds(uniqueSowIds, tx);
-    await closeFarrowingsForRetirement(
+    ensureRetirementFarrowingDatesAreConsistent(activeFarrowings, removalDate);
+    const closedFarrowings = await closeFarrowingsForRetirement(
       activeFarrowings.map(({ farrowing_id }) => farrowing_id),
       removalDate,
       tx,
     );
+
+    if (closedFarrowings.count !== activeFarrowings.length) {
+      throw breedingSowErrors.farrowingClosureStateChanged(
+        uniqueSowIds,
+        activeFarrowings.length,
+        closedFarrowings.count,
+      );
+    }
 
     const result = await retireActiveBreedingSows(uniqueSowIds, removalDate, data, tx);
 

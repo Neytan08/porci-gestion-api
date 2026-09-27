@@ -34,11 +34,14 @@ router.get("/", asyncHandler(FarrowingsController.getAll.bind(FarrowingsControll
  *         name: id
  *         schema:
  *           type: integer
+ *           minimum: 1
  *         required: true
  *         description: ID of the farrowing record
  *     responses:
  *       200:
  *         description: Farrowing record found
+ *       400:
+ *         description: Invalid farrowing identifier
  *       404:
  *         description: Farrowing record not found
  */
@@ -57,25 +60,31 @@ router.get("/:id", asyncHandler(FarrowingsController.getById.bind(FarrowingsCont
  *         application/json:
  *           schema:
  *             type: object
+ *             required: [sow_id, farrowing_date, male_piglets, female_piglets]
  *             properties:
  *               sow_id:
  *                 type: integer
+ *                 minimum: 1
  *                 example: 1
  *               farrowing_date:
  *                 type: string
- *                 format: date
+ *                 description: M/D/YYYY, YYYY-MM-DD, or an ISO 8601 timestamp with an offset. Must be after the associated reproduction date.
  *                 example: "2025-10-05"
  *               male_piglets:
  *                 type: integer
+ *                 minimum: 0
  *                 example: 5
  *               female_piglets:
  *                 type: integer
+ *                 minimum: 0
  *                 example: 6
  *               still_births:
  *                 type: integer
+ *                 minimum: 0
  *                 example: 0
  *               mummies:
  *                 type: integer
+ *                 minimum: 0
  *                 example: 0
  *               notes:
  *                 type: string
@@ -84,56 +93,13 @@ router.get("/:id", asyncHandler(FarrowingsController.getById.bind(FarrowingsCont
  *       201:
  *         description: Farrowing record created successfully. The related mating event is closed and the sow moves to lactation.
  *       400:
- *         description: Validation error
+ *         description: Invalid payload or farrowing date not after the reproduction date
  *       404:
  *         description: The sow was not found
  *       409:
  *         description: The sow is not eligible for farrowing creation
  */
 router.post("/", asyncHandler(FarrowingsController.create.bind(FarrowingsController)));
-
-/**
- * @swagger
- * /farrowings/{id}:
- *   put:
- *     summary: Update an existing farrowing record
- *     tags: [Farrowings]
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: integer
- *         required: true
- *         description: ID of the farrowing record to update
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               farrowing_date:
- *                 type: string
- *                 format: date
- *                 example: "2025-10-06"
- *               male_piglets:
- *                 type: integer
- *                 example: 6
- *               female_piglets:
- *                 type: integer
- *                 example: 5
- *               notes:
- *                 type: string
- *                 example: "Updated after follow-up"
- *     responses:
- *       200:
- *         description: Farrowing record updated successfully. If farrowing_date changes, weaning_date is recalculated.
- *       400:
- *         description: Invalid update payload or invalid identifier
- *       404:
- *         description: Farrowing record not found
- */
-// router.put("/:id", asyncHandler(FarrowingsController.update.bind(FarrowingsController)));
 
 /**
  * @swagger
@@ -160,8 +126,7 @@ router.post("/", asyncHandler(FarrowingsController.create.bind(FarrowingsControl
  *             properties:
  *               weaned_date:
  *                 type: string
- *                 format: date
- *                 description: Actual weaning date, on or after the farrowing date
+ *                 description: Actual weaning date in M/D/YYYY, YYYY-MM-DD, or offset ISO format; on or after the farrowing date
  *                 example: "2026-09-10"
  *               weaned_piglets:
  *                 type: integer
@@ -173,9 +138,9 @@ router.post("/", asyncHandler(FarrowingsController.create.bind(FarrowingsControl
  *       400:
  *         description: Invalid identifier, missing or invalid body fields, or weaning date before farrowing
  *       404:
- *         description: Farrowing not found or an update no longer matches the required farrowing or sow state
+ *         description: Farrowing not found
  *       409:
- *         description: Already weaned or sow is not lactating
+ *         description: Already weaned, sow is not lactating, or the reproductive state changed concurrently
  */
 router.patch("/:id/wean", asyncHandler(FarrowingsController.wean.bind(FarrowingsController)));
 
@@ -190,13 +155,18 @@ router.patch("/:id/wean", asyncHandler(FarrowingsController.wean.bind(Farrowings
  *         name: id
  *         schema:
  *           type: integer
+ *           minimum: 1
  *         required: true
  *         description: ID of the farrowing record to delete
  *     responses:
  *       204:
- *         description: Farrowing record deleted successfully
+ *         description: Unweaned farrowing deleted; mating event and sow reproductive state restored
+ *       400:
+ *         description: Invalid farrowing identifier
  *       404:
  *         description: Farrowing record not found
+ *       409:
+ *         description: Completed farrowing is permanent history or related reproductive state changed
  */
 router.delete("/:id", asyncHandler(FarrowingsController.delete.bind(FarrowingsController)));
 
@@ -211,6 +181,7 @@ router.delete("/:id", asyncHandler(FarrowingsController.delete.bind(FarrowingsCo
  *         name: sowId
  *         schema:
  *           type: integer
+ *           minimum: 1
  *         required: true
  *         description: ID of the sow
  *     responses:

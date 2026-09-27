@@ -78,7 +78,7 @@ Search for an existing shared constant before introducing a new value. Keep one 
 ## Documentation and Comments
 Code should be understandable primarily through structure and naming, with documentation adding context rather than compensating for unclear code.
 
-Give every function a brief, high-level comment that helps the reader understand its purpose before reading the implementation. A concise JSDoc summary is enough for a straightforward function. The comment should explain the responsibility or domain meaning rather than restate the function name or narrate the code.
+Give every function a high-level comment that helps the reader understand its purpose before reading the implementation. A JSDoc summary is enough for a straightforward function. The comment should explain the responsibility well enough or domain meaning rather than restate the function name.
 
 Add more detail only when it clarifies:
 - purpose or responsibility;
@@ -88,8 +88,6 @@ Add more detail only when it clarifies:
 - parameters or return values whose meaning is not obvious from names and types.
 
 Do not add `@param` or `@returns` tags when they only repeat clear parameter names, TypeScript types, or an obvious return value.
-
-Use inline comments for non-obvious reasoning or constraints, not to narrate what each line already states.
 
 Avoid files dominated by comments. If extensive comments are required to understand a function, first evaluate whether its structure or naming should be improved.
 

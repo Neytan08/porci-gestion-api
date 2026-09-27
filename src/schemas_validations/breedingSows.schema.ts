@@ -71,22 +71,6 @@ export const breedingSowSchema = z.strictObject({
 
 // Ordinary updates cannot overwrite imported history or workflow-owned lifecycle values.
 export const breedingSowUpdateSchema = breedingSowSchema.partial();
-// export const breedingSowUpdateSchema = z.strictObject({
-//   status: breedingSowStatusSchema.optional(),
-//   breed_id: positiveIdSchema.optional(),
-//   sow_tag_number: z
-//     .string()
-//     .max(50)
-//     .refine((tag) => normalizeSowTagNumber(tag).length > 0, {
-//       message: "The breeding sow tag number cannot be blank",
-//     })
-//     .optional(),
-//   entry_date: dateInputSchema.optional(),
-//   weight: measurementSchema.nullable().optional(),
-//   length: measurementSchema.nullable().optional(),
-//   mammary_glands: z.number().int().positive().optional(),
-//   description: z.string().nullable().optional(),
-// });
 
 // Validation schema for changing the status of a breeding sow 
 export const breedingSowStatusChangeValidationSchema = z.strictObject({
