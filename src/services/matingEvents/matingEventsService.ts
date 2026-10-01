@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import {
   createMatingEvent,
   deleteMatingEvent,
@@ -25,12 +26,31 @@ class MatingEventsService {
     return await getMatingEventById(id);
   }
 
+  /** Creates a mating event and records the committed reproductive operation. */
   async create(data: CreateMatingEventInput) {
-    return await createMatingEvent(data);
+    const createdEvent = await createMatingEvent(data);
+
+    logger.info("Created mating event", {
+      event: "mating_event.created",
+      matingEventId: createdEvent.mating_id,
+      sowId: createdEvent.sow_id,
+      boarId: createdEvent.boar_id ?? null,
+    });
+
+    return createdEvent;
   }
 
+  /** Deletes an eligible mating event and records the restored workflow state. */
   async delete(id: number) {
-    return await deleteMatingEvent(id);
+    const deletedEvent = await deleteMatingEvent(id);
+
+    logger.info("Deleted mating event", {
+      event: "mating_event.deleted",
+      matingEventId: deletedEvent.mating_id,
+      sowId: deletedEvent.sow_id,
+    });
+
+    return deletedEvent;
   }
 
   async getAllMatingEventsBySow(sowId: number) {
@@ -45,8 +65,18 @@ class MatingEventsService {
     return await getMatingEventsGroupedByPregnancyResult();
   }
 
+  /** Updates pregnancy results and records the completed batch operation. */
   async updatePregnancyResult(matingIds: number[], pregnancyResult: PregnancyResult) {
-    return await updateMatingEventsPregnancyResult(matingIds, pregnancyResult);
+    const result = await updateMatingEventsPregnancyResult(matingIds, pregnancyResult);
+
+    logger.info("Updated mating event pregnancy result", {
+      event: "mating_events.pregnancy_result_updated",
+      matingIds,
+      pregnancyResult,
+      updatedCount: result.count,
+    });
+
+    return result;
   }
 }
 

@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import type { CreateBoarInput, RetireBoarInput, UpdateBoarInput } from "./boarsTypes";
 import {
   createBoar,
@@ -20,20 +21,59 @@ class BoarsService {
     return await getBoarById(id);
   }
 
+  /** Creates a boar and records the committed business operation. */
   async create(data: CreateBoarInput) {
-    return await createBoar(data);
+    const createdBoar = await createBoar(data);
+
+    logger.info("Created boar", {
+      event: "boar.created",
+      boarId: createdBoar.boar_id,
+      boarTagNumber: createdBoar.boar_tag_number,
+      breedId: createdBoar.breed_id,
+    });
+
+    return createdBoar;
   }
 
+  /** Updates a boar and records the committed business operation. */
   async update(id: number, data: UpdateBoarInput) {
-    return await updateBoar(id, data);
+    const updatedBoar = await updateBoar(id, data);
+
+    logger.info("Updated boar", {
+      event: "boar.updated",
+      boarId: updatedBoar.boar_id,
+      boarTagNumber: updatedBoar.boar_tag_number,
+      breedId: updatedBoar.breed_id,
+    });
+
+    return updatedBoar;
   }
 
+  /** Deletes an eligible boar and records the committed business operation. */
   async delete(id: number) {
-    return await deleteBoar(id);
+    const deletedBoar = await deleteBoar(id);
+
+    logger.info("Deleted boar", {
+      event: "boar.deleted",
+      boarId: deletedBoar.boar_id,
+      boarTagNumber: deletedBoar.boar_tag_number,
+    });
+
+    return deletedBoar;
   }
 
+  /** Retires eligible boars and records the completed batch operation. */
   async retire(ids: number[], data: RetireBoarInput) {
-    return await retireBoar(ids, data);
+    const result = await retireBoar(ids, data);
+
+    logger.info("Retired boars", {
+      event: "boars.retired",
+      boarIds: ids,
+      retiredCount: result.count,
+      removalDate: data.removal_date ?? null,
+    });
+
+    return result;
   }
 
   async checkBoarTagNumberExists(boarTagNumber: string) {

@@ -2,15 +2,13 @@ import type { Request, Response } from "express";
 import { breedSchema, breedUpdateSchema } from "../schemas_validations/breeds.schema";
 import { breedErrors } from "../services/breeds/breedErrors";
 import BreedService from "../services/breeds/breedService";
-import logger from "../utils/logger";
 import { parsePositiveIdOrThrow } from "../utils/requestParsing";
 
 class BreedController {
-  /** Responds with the breed catalog and logs its size. */
+  /** Responds with the breed catalog. */
   async getAll(_: Request, res: Response) {
     const breeds = await BreedService.getAll();
-    logger.info("Fetched breeds", { count: breeds.length });
-    res.json(breeds);
+    return res.json(breeds);
   }
 
   /** Resolves a requested breed or returns the entity-specific not-found error. */
@@ -24,8 +22,7 @@ class BreedController {
       throw breedErrors.breedNotFound(id, "retrieve");
     }
 
-    logger.info("Fetched breed", { breedId: id });
-    res.json(breed);
+    return res.json(breed);
   }
 
   /** Validates breed creation input and responds with the created record. */
@@ -37,11 +34,7 @@ class BreedController {
     }
 
     const newBreed = await BreedService.create(parseResult.data);
-    logger.info("Created breed", {
-      breedId: newBreed.breed_id,
-      breedName: newBreed.breed_name,
-    });
-    res.status(201).json(newBreed);
+    return res.status(201).json(newBreed);
   }
 
   /** Validates a partial breed update and responds with the resulting record. */
@@ -56,11 +49,7 @@ class BreedController {
       breedErrors.invalidBreedId(rawValue, "update"),
     );
     const updated = await BreedService.update(id, parseResult.data);
-    logger.info("Updated breed", {
-      breedId: updated.breed_id,
-      breedName: updated.breed_name,
-    });
-    res.json(updated);
+    return res.json(updated);
   }
 
   /** Requests breed deletion and returns an empty success response. */
@@ -68,13 +57,8 @@ class BreedController {
     const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
       breedErrors.invalidBreedId(rawValue, "delete"),
     );
-    const deleted = await BreedService.delete(id);
-
-    logger.info("Deleted breed", {
-      breedId: deleted.breed_id,
-      breedName: deleted.breed_name,
-    });
-    res.status(204).send();
+    await BreedService.delete(id);
+    return res.status(204).send();
   }
 }
 

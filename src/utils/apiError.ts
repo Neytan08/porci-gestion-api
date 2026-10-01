@@ -1,5 +1,6 @@
 export type ApiErrorLogContext = Record<string, unknown>;
 
+// TODO: Add comments to all this doc
 type ApiErrorOptions = {
   errorCode?: string;
   isOperational?: boolean;
@@ -24,6 +25,7 @@ export class ApiError extends Error {
   constructor(statusCode: number, message: string, options: ApiErrorOptions = {}) {
     super(message);
     Object.setPrototypeOf(this, new.target.prototype); // restore prototype chain
+    this.name = new.target.name;
     this.statusCode = statusCode;
     this.errorCode = options.errorCode ?? DEFAULT_ERROR_CODES[statusCode] ?? "INTERNAL_SERVER_ERROR";
     this.isOperational = options.isOperational ?? true;

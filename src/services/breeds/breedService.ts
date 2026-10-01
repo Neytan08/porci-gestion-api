@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import { createBreed, deleteBreed, updateBreed } from "./breedsCommands";
 import { getAllBreeds, getBreedById, getBreedByNormalizedName } from "./breedsQueries";
 import type { CreateBreedInput, UpdateBreedInput } from "./breedTypes";
@@ -18,17 +19,41 @@ class BreedService {
 
   /** Creates a breed through the name-uniqueness workflow. */
   async create(data: CreateBreedInput) {
-    return await createBreed(data);
+    const createdBreed = await createBreed(data);
+
+    logger.info("Created breed", {
+      event: "breed.created",
+      breedId: createdBreed.breed_id,
+      breedName: createdBreed.breed_name,
+    });
+
+    return createdBreed;
   }
 
   /** Updates breed fields through the existence and name-uniqueness workflow. */
   async update(id: number, data: UpdateBreedInput) {
-    return await updateBreed(id, data);
+    const updatedBreed = await updateBreed(id, data);
+
+    logger.info("Updated breed", {
+      event: "breed.updated",
+      breedId: updatedBreed.breed_id,
+      breedName: updatedBreed.breed_name,
+    });
+
+    return updatedBreed;
   }
 
   /** Deletes a breed only when relationship checks allow it. */
   async delete(id: number) {
-    return await deleteBreed(id);
+    const deletedBreed = await deleteBreed(id);
+
+    logger.info("Deleted breed", {
+      event: "breed.deleted",
+      breedId: deletedBreed.breed_id,
+      breedName: deletedBreed.breed_name,
+    });
+
+    return deletedBreed;
   }
 
   /** Checks name availability using the same normalization as breed writes. */

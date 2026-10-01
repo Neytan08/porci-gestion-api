@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import { createFarrowing, deleteFarrowing, weanFarrowing } from "./farrowingsCommands";
 import { getAllFarrowings, getFarrowingById, getFarrowingsBySow } from "./farrowingsQueries";
 import type { CreateFarrowingInput, WeanFarrowingInput } from "./farrowingsTypes";
@@ -19,17 +20,45 @@ class FarrowingsService {
 
   /** Delegates creation to the transactional reproductive workflow. */
   async create(data: CreateFarrowingInput) {
-    return await createFarrowing(data);
+    const createdFarrowing = await createFarrowing(data);
+
+    logger.info("Created farrowing", {
+      event: "farrowing.created",
+      farrowingId: createdFarrowing.farrowing_id,
+      sowId: createdFarrowing.sow_id,
+      matingId: createdFarrowing.mating_id,
+    });
+
+    return createdFarrowing;
   }
 
   /** Delegates normal weaning to the transactional farrowing workflow. */
   async wean(id: number, data: WeanFarrowingInput) {
-    return await weanFarrowing(id, data);
+    const weanedFarrowing = await weanFarrowing(id, data);
+
+    logger.info("Weaned farrowing", {
+      event: "farrowing.weaned",
+      farrowingId: weanedFarrowing.farrowing_id,
+      sowId: weanedFarrowing.sow_id,
+      weanedDate: weanedFarrowing.weaned_date,
+      weanedPiglets: weanedFarrowing.weaned_piglets,
+    });
+
+    return weanedFarrowing;
   }
 
   /** Deletes an eligible unweaned farrowing through its restoration workflow. */
   async delete(id: number) {
-    return await deleteFarrowing(id);
+    const deletedFarrowing = await deleteFarrowing(id);
+
+    logger.info("Deleted farrowing", {
+      event: "farrowing.deleted",
+      farrowingId: deletedFarrowing.farrowing_id,
+      sowId: deletedFarrowing.sow_id,
+      matingId: deletedFarrowing.mating_id,
+    });
+
+    return deletedFarrowing;
   }
 
   /** Returns the farrowing collection and count for one sow. */

@@ -1,6 +1,7 @@
 import { createLogger, format, transports } from "winston";
+import { getRequestContext } from "../middlewares/requestContext";
 
-const { combine, timestamp, printf, colorize, errors } = format;
+const { combine, timestamp, printf, colorize, errors, json } = format;
 
 const RESERVED_LOG_KEYS = new Set(["level", "message", "timestamp", "stack"]);
 
@@ -18,9 +19,14 @@ const formatMetadataValue = (value: unknown) => {
     return String(value);
   }
 
-  return JSON.stringify(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
 };
 
+// Serializes metadata fields into a single string for console output.
 const serializeMetadata = (info: Record<string, unknown>) => {
   const metadataEntries = Object.entries(info).filter(
     ([key, value]) => !RESERVED_LOG_KEYS.has(key) && value !== undefined,
@@ -45,19 +51,33 @@ const logFormat = printf((info) => {
   return `${info.timestamp} [${info.level}]: ${info.message}${metadata}${stack}`;
 });
 
+// Enriches every record created during a request without coupling callers to Express.
+const requestContextFormat = format((info) => {
+  const requestContext = getRequestContext();
+
+  if (!requestContext) {
+    return info;
+  }
+
+  info.requestId = requestContext.requestId;
+  info.method = requestContext.method;
+  info.path = requestContext.path;
+  return info;
+});
+
 // Logger configuration
 const logger = createLogger({
-  level: process.env.NODE_ENV === "prod" ? "info" : "debug",
+  level:
+    process.env.LOG_LEVEL ?? (process.env.NODE_ENV === "production" ? "info" : "debug"),
   format: combine(
     errors({ stack: true }),
-    colorize(), // conlose color
-    timestamp(), // add timestamp
-    logFormat,
+    requestContextFormat(),
+    timestamp(),
   ),
   transports: [
-    new transports.Console(),
-    new transports.File({ filename: "logs/error.log", level: "error" }), // errors to file
-    new transports.File({ filename: "logs/combined.log" }), // all logs to file
+    new transports.Console({ format: combine(colorize(), logFormat) }),
+    new transports.File({ filename: "logs/error.log", level: "error", format: json() }),
+    new transports.File({ filename: "logs/combined.log", format: json() }),
   ],
   exitOnError: false,
 });
