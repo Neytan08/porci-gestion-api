@@ -1,4 +1,5 @@
 import { createLogger, format, transports } from "winston";
+import { config } from "../config";
 import { getRequestContext } from "../middlewares/requestContext";
 
 const { combine, timestamp, printf, colorize, errors, json } = format;
@@ -65,20 +66,33 @@ const requestContextFormat = format((info) => {
   return info;
 });
 
+const consoleFormat = config.logFormat === "json" ? json() : combine(colorize(), logFormat);
+
+const fileTransports = config.logFilesEnabled
+  ? [
+      new transports.File({
+        filename: "logs/error.log",
+        level: "error",
+        format: json(),
+        maxsize: config.logFileMaxBytes,
+        maxFiles: config.logFileMaxFiles,
+        tailable: true,
+      }),
+      new transports.File({
+        filename: "logs/combined.log",
+        format: json(),
+        maxsize: config.logFileMaxBytes,
+        maxFiles: config.logFileMaxFiles,
+        tailable: true,
+      }),
+    ]
+  : [];
+
 // Logger configuration
 const logger = createLogger({
-  level:
-    process.env.LOG_LEVEL ?? (process.env.NODE_ENV === "production" ? "info" : "debug"),
-  format: combine(
-    errors({ stack: true }),
-    requestContextFormat(),
-    timestamp(),
-  ),
-  transports: [
-    new transports.Console({ format: combine(colorize(), logFormat) }),
-    new transports.File({ filename: "logs/error.log", level: "error", format: json() }),
-    new transports.File({ filename: "logs/combined.log", format: json() }),
-  ],
+  level: config.logLevel,
+  format: combine(errors({ stack: true }), requestContextFormat(), timestamp()),
+  transports: [new transports.Console({ format: consoleFormat }), ...fileTransports],
   exitOnError: false,
 });
 

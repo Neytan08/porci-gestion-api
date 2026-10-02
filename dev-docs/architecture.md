@@ -145,11 +145,19 @@ When explicit row locks are used, acquire them in a consistent deterministic ord
 If an expected state or affected-row count no longer matches when the write occurs, treat the operation as a domain conflict rather than continuing from stale data.
 
 ## Logging
-Use structured logging for significant successful operations and useful diagnostic context.
+Use structured logging with request-level context provided through AsyncLocalStorage.
 
-Controllers are appropriate places for high-level success logs. Centralized error handling should own error logging unless a lower layer has unique context that cannot be preserved otherwise.
+The request tracing middleware must run before other middleware and routes. It creates or accepts the request ID, returns it through X-Request-ID, and records request start, completion, duration, status, and premature closure.
 
-Include useful identifiers when appropriate. Avoid noisy step-by-step logs, sensitive information, and unnecessarily large payloads.
+The logger automatically adds the request ID, HTTP method, and path to logs created during the request. Do not pass request IDs or Express request objects through controllers, services, or domain layers.
+
+Controllers should not normally log. Services own significant successful business-operation logs after the operation completes. Routine reads should rely on the request completion log unless additional debug context is genuinely useful.
+
+Centralized error handling owns failure logging. Lower layers should preserve diagnostic details through ApiError.logContext instead of logging before throwing. Handled failures use warn; unexpected server failures use error.
+
+A failed request produces both a diagnostic request.failed log and a final request.completed log with its status and duration.
+
+Avoid sensitive information, complete payloads or records, noisy step-by-step events, and duplicate logs.
 
 ## Swagger
 Keep Swagger/OpenAPI synchronized with the implemented HTTP contract.

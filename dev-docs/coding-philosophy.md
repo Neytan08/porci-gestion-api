@@ -76,18 +76,18 @@ Do not hardcode reusable finite domain values such as statuses, pregnancy result
 Search for an existing shared constant before introducing a new value. Keep one source of truth and derive related types from it when appropriate.
 
 ## Documentation and Comments
-Code should be understandable primarily through structure and naming, with documentation adding context rather than compensating for unclear code.
+Code should be understandable primarily through structure and naming, with documentation adding well descriptive context rather than compensating for unclear code.
 
-Give every function a high-level comment that helps the reader understand its purpose before reading the implementation. A JSDoc summary is enough for a straightforward function. The comment should explain the responsibility well enough or domain meaning rather than restate the function name.
+Give every function a descriptive comment that helps the reader understand its purpose before reading the implementation. A JSDoc summary is enough for a straightforward function. The comment should explain the responsibility well enough or domain meaning rather than restate the function name.
 
-Add more detail only when it clarifies:
+Add details when it clarifies:
 - purpose or responsibility;
 - domain behavior;
 - non-obvious decisions;
 - workflow implications;
 - parameters or return values whose meaning is not obvious from names and types.
 
-Do not add `@param` or `@returns` tags when they only repeat clear parameter names, TypeScript types, or an obvious return value.
+Do not add `@param` or `@returns` tags when they only repeat clear parameter names, TypeScript types, or an obvious return value. Add them to express the purpose of the parameter
 
 Avoid files dominated by comments. If extensive comments are required to understand a function, first evaluate whether its structure or naming should be improved.
 

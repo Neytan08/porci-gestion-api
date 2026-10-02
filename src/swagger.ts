@@ -1,32 +1,29 @@
+import fs from "node:fs";
+import path from "node:path";
 import type { Express } from "express";
-import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
+import { config } from "./config";
+import { createOpenApiSpecification } from "./openapi";
 
-const options = {
-  definition: {
-    openapi: "3.0.0",
-    info: {
-      title: "PorciGestion API",
-      version: "1.0.0",
-      description:
-        "API for managing swine farm operations. " +
-        "Every response includes an X-Request-ID header for request correlation.",
-    },
-    servers: [{ url: "http://localhost:3000/api", description: "Local Server" }],
-    components: {
-      headers: {
-        RequestId: {
-          description: "Unique identifier used to correlate logs for this request.",
-          schema: { type: "string" },
-        },
-      },
-    },
-  },
-  apis: ["./src/routes/*.ts", "./src/controllers/*.ts"],
+/** Loads the generated production contract or builds it from source during development. */
+const loadOpenApiSpecification = (apiBaseUrl: string) => {
+  const generatedSpecificationPath = path.join(__dirname, "openapi.json");
+
+  if (!fs.existsSync(generatedSpecificationPath)) {
+    if (config.isProduction) {
+      throw new Error(`OpenAPI artifact was not found at ${generatedSpecificationPath}.`);
+    }
+
+    return createOpenApiSpecification(apiBaseUrl);
+  }
+
+  const specification = JSON.parse(fs.readFileSync(generatedSpecificationPath, "utf8"));
+  specification.servers = [{ url: apiBaseUrl, description: "Configured API server" }];
+  return specification;
 };
 
-const specs = swaggerJsdoc(options);
-
-export function setupSwagger(app: Express) {
-  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
+/** Mounts Swagger UI from the same path advertised by process configuration. */
+export function setupSwagger(app: Express, swaggerPath: string, apiBaseUrl: string) {
+  const specification = loadOpenApiSpecification(apiBaseUrl);
+  app.use(swaggerPath, swaggerUi.serve, swaggerUi.setup(specification));
 }
