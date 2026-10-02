@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import prisma from "../../prismaClient";
 import type { CreateBoarInput, RetireBoarInput, UpdateBoarInput } from "./boarsTypes";
 
@@ -38,11 +38,13 @@ export const getBoarStateById = async (id: number, queryClient: BoarsQueryClient
 
 /** Locks the boar while a mating event assigns it, serializing that assignment with retirement. */
 export const getBoarStateForAssignment = async (id: number, queryClient: BoarsQueryClient) => {
-  const rows = await queryClient.$queryRaw<Array<{
-    boar_id: number;
-    removal_date: Date | null;
-    removal_reason: string | null;
-  }>>`
+  const rows = await queryClient.$queryRaw<
+    Array<{
+      boar_id: number;
+      removal_date: Date | null;
+      removal_reason: string | null;
+    }>
+  >`
     SELECT boar_id, removal_date, removal_reason
     FROM boars
     WHERE boar_id = ${id}
@@ -51,11 +53,28 @@ export const getBoarStateForAssignment = async (id: number, queryClient: BoarsQu
   return rows[0] ?? null;
 };
 
-export const getBoarsForRetirement = async (ids: number[], queryClient: BoarsQueryClient) =>
-  queryClient.boars.findMany({
-    where: { boar_id: { in: ids } },
-    select: { boar_id: true, birth_date: true, removal_date: true, removal_reason: true },
-  });
+/** Locks retirement targets in identifier order before their lifecycle dates are validated. */
+export const getBoarsForRetirement = async (ids: number[], queryClient: BoarsQueryClient) => {
+  if (ids.length === 0) {
+    return [];
+  }
+
+  const orderedBoarIds = [...ids].sort((left, right) => left - right);
+  return await queryClient.$queryRaw<
+    Array<{
+      boar_id: number;
+      birth_date: Date;
+      removal_date: Date | null;
+      removal_reason: string | null;
+    }>
+  >(Prisma.sql`
+    SELECT boar_id, birth_date, removal_date, removal_reason
+    FROM boars
+    WHERE boar_id IN (${Prisma.join(orderedBoarIds)})
+    ORDER BY boar_id
+    FOR UPDATE
+  `);
+};
 
 /**
  * Checks whether a breed exists before a boar references it.
@@ -87,7 +106,11 @@ export const getBoarByNormalizedTagNumber = async (
 export const createBoarRecord = (data: CreateBoarInput, queryClient: BoarsQueryClient) =>
   queryClient.boars.create({ data });
 
-export const updateBoarRecord = (id: number, data: UpdateBoarInput, queryClient: BoarsQueryClient) =>
+export const updateBoarRecord = (
+  id: number,
+  data: UpdateBoarInput,
+  queryClient: BoarsQueryClient,
+) =>
   queryClient.boars.update({
     where: { boar_id: id, removal_date: null, removal_reason: null },
     data,

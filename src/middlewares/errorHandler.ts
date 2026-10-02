@@ -1,7 +1,11 @@
-import type { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import type { NextFunction, Request, Response } from "express";
 import { ApiError } from "../utils/apiError";
 import logger from "../utils/logger";
+import {
+  getPrismaErrorCategory,
+  isPrismaKnownRequestError,
+  type PrismaErrorCategory,
+} from "../utils/prismaErrors";
 
 const getErrorLogLevel = (statusCode: number) => (statusCode >= 500 ? "error" : "warn");
 
@@ -23,6 +27,48 @@ const logHandledError = (
 /** Restricts arbitrary error status values to valid HTTP failure responses. */
 const getResponseStatus = (statusCode: number | undefined) =>
   statusCode !== undefined && statusCode >= 400 && statusCode <= 599 ? statusCode : 500;
+
+const PRISMA_ERROR_RESPONSES: Record<
+  PrismaErrorCategory,
+  { status: number; errorCode: string; message: string; logMessage: string }
+> = {
+  badRequest: {
+    status: 400,
+    errorCode: "PRISMA_REQUEST_ERROR",
+    message: "The request could not be completed due to invalid persistence data.",
+    logMessage: "Prisma rejected request data",
+  },
+  constraintConflict: {
+    status: 409,
+    errorCode: "PERSISTENCE_CONSTRAINT_CONFLICT",
+    message: "The request conflicts with related or existing data.",
+    logMessage: "Persistence constraint conflict",
+  },
+  recordNotFound: {
+    status: 404,
+    errorCode: "RECORD_NOT_FOUND",
+    message: "The requested record was not found.",
+    logMessage: "Record not found",
+  },
+  transactionConflict: {
+    status: 409,
+    errorCode: "TRANSACTION_CONFLICT",
+    message: "The data changed during the operation. Retry with the current state.",
+    logMessage: "Persistence transaction conflict",
+  },
+  unavailable: {
+    status: 503,
+    errorCode: "DATABASE_UNAVAILABLE",
+    message: "The service is temporarily unable to access its database.",
+    logMessage: "Database unavailable",
+  },
+  internal: {
+    status: 500,
+    errorCode: "PERSISTENCE_ERROR",
+    message: "The request could not be completed due to an internal persistence error.",
+    logMessage: "Unexpected persistence error",
+  },
+};
 
 /**
  * Global error handling middleware
@@ -86,59 +132,22 @@ export function errorHandler(err: unknown, _req: Request, res: Response, next: N
     });
   }
 
-  // Prisma Client Known Errors
-  if (unknownError.name === "PrismaClientKnownRequestError") {
-    const prismaError = err as PrismaClientKnownRequestError;
+  const prismaErrorCategory = getPrismaErrorCategory(err);
+  if (prismaErrorCategory) {
+    const response = PRISMA_ERROR_RESPONSES[prismaErrorCategory];
+    const knownPrismaError = isPrismaKnownRequestError(err) ? err : null;
 
-    if (prismaError.code === "P2002") {
-      const status = 409;
-      const errorCode = "UNIQUE_CONSTRAINT_FAILED";
-
-      logHandledError(status, "Unique constraint failed", {
-        errorCode,
-        errorType: prismaError.name,
-        prismaCode: prismaError.code,
-        target: prismaError.meta?.target,
-      });
-
-      return res.status(status).json({
-        status,
-        errorCode,
-        message: "A unique constraint was violated.",
-      });
-    }
-
-    if (prismaError.code === "P2025") {
-      const status = 404;
-      const errorCode = "RECORD_NOT_FOUND";
-
-      logHandledError(status, "Record not found", {
-        errorCode,
-        errorType: prismaError.name,
-        prismaCode: prismaError.code,
-      });
-
-      return res.status(status).json({
-        status,
-        errorCode,
-        message: "The requested record was not found.",
-      });
-    }
-
-    const status = 400;
-    const errorCode = "PRISMA_REQUEST_ERROR";
-
-    logHandledError(status, "Prisma request error", {
-      errorCode,
-      errorType: prismaError.name,
-      prismaCode: prismaError.code,
-      prismaMeta: prismaError.meta,
+    logHandledError(response.status, response.logMessage, {
+      errorCode: response.errorCode,
+      errorType: unknownError.name ?? "PrismaError",
+      prismaCode: knownPrismaError?.code,
+      prismaMeta: knownPrismaError?.meta,
     });
 
-    return res.status(status).json({
-      status,
-      errorCode,
-      message: "The request could not be completed due to a persistence error.",
+    return res.status(response.status).json({
+      status: response.status,
+      errorCode: response.errorCode,
+      message: response.message,
     });
   }
 
