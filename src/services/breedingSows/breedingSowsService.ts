@@ -12,7 +12,11 @@ import {
   getBreedingSowByNormalizedTagNumber,
   getBreedingSowsByStatus,
 } from "./breedingSowsQueries";
-import type { BREEDING_SOW_STATUSES, BreedingSowStatus } from "./breedingSowsRules";
+import type {
+  BREEDING_SOW_STATUSES,
+  BreedingSowStatus,
+  ManuallyAssignableBreedingSowStatus,
+} from "./breedingSowsRules";
 import type {
   CreateBreedingSowInput,
   RetireBreedingSowInput,
@@ -71,10 +75,7 @@ class BreedingSowsService {
   }
 
   /** Validates a proposed status change without persisting it. */
-  async validateStatusChange(
-    id: number,
-    status: Exclude<BreedingSowStatus, typeof BREEDING_SOW_STATUSES.retirada>,
-  ) {
+  async validateStatusChange(id: number, status: ManuallyAssignableBreedingSowStatus) {
     const result = await validateBreedingSowStatusChange(id, status);
 
     logger.debug("Validated breeding sow status change", {

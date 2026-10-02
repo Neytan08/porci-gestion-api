@@ -14,6 +14,7 @@ import {
   updateActiveBreedingSowStatuses,
 } from "../breedingSows/breedingSowsQueries";
 import { BREEDING_SOW_STATUSES } from "../breedingSows/breedingSowsRules";
+import { matingEventErrors } from "./matingEventErrors";
 import {
   countMatingEventFarrowings,
   deleteMatingEventById,
@@ -26,17 +27,19 @@ import {
   type PregnancyUpdateEvent,
   updateMatingEventPregnancyResults,
 } from "./matingEventsQueries";
-import { matingEventErrors } from "./matingEventErrors";
 import type { CreateMatingEventInput } from "./matingEventsTypes";
 import {
   canPregnancyResultBeProvidedByRequest,
   getSowStatusAfterDeletingMatingEvent,
   getSowStatusForCreatedMatingEvent,
-  isEmptySowStatus,
-  isSupportedPregnancyResultTransition,
-  parsePregnancyResult,
   getSowStatusTransition,
+  hasMinimumPostWeaningInterval,
+  isEmptySowStatus,
+  isReproductionDateOnOrAfterEntryDate,
+  isSupportedPregnancyResultTransition,
+  MINIMUM_POST_WEANING_INTERVAL_DAYS,
   type PregnancyResult,
+  parsePregnancyResult,
 } from "./pregnancyRules";
 
 /**
@@ -165,10 +168,7 @@ const updateAffectedSowStatuses = async (
   currentPregnancyResult: PregnancyResult,
   nextPregnancyResult: PregnancyResult,
 ) => {
-  const nextStatus = resolveSowStatusTransition(
-    currentPregnancyResult,
-    nextPregnancyResult,
-  );
+  const nextStatus = resolveSowStatusTransition(currentPregnancyResult, nextPregnancyResult);
 
   if (!nextStatus) {
     return;
@@ -216,6 +216,33 @@ const ensureBoarCanBeAssigned = async (tx: Prisma.TransactionClient, boarId: num
   if (!isActiveBoar(boar)) throw matingEventErrors.boarRetired(boarId);
 };
 
+/** Validates mating chronology from the sow state protected by the creation lock. */
+const ensureReproductionDateIsValid = (
+  sow: { sow_id: number; entry_date: Date; last_weaning_date: Date | null },
+  reproductionDate: Date,
+) => {
+  if (!isReproductionDateOnOrAfterEntryDate(reproductionDate, sow.entry_date)) {
+    throw matingEventErrors.reproductionDateBeforeSowEntry(
+      sow.sow_id,
+      reproductionDate,
+      sow.entry_date,
+    );
+  }
+
+  const lastWeaningDate = sow.last_weaning_date;
+  if (
+    lastWeaningDate !== null &&
+    !hasMinimumPostWeaningInterval(reproductionDate, lastWeaningDate)
+  ) {
+    throw matingEventErrors.reproductionDateBeforePostWeaningInterval(
+      sow.sow_id,
+      reproductionDate,
+      lastWeaningDate,
+      MINIMUM_POST_WEANING_INTERVAL_DAYS,
+    );
+  }
+};
+
 /**
  * Creates a mating event after locking its sow, then its selected boar, so concurrent
  * reproductive and retirement workflows must revalidate after this transaction.
@@ -231,6 +258,8 @@ export const createMatingEvent = async (data: CreateMatingEventInput) => {
     if (!sow) {
       throw matingEventErrors.sowNotFound(data.sow_id);
     }
+
+    ensureReproductionDateIsValid(sow, data.reproduction_date);
 
     // This explicit conflict check returns the business error requested by the API
     // instead of falling back to the generic sow-status validation below.
@@ -366,9 +395,10 @@ export const updatePregnancyResult = async (
       );
     }
 
-    const updatedEvents = currentPregnancyResult === nextPregnancyResult
-      ? { count: 0 }
-      : await updateMatingEventPregnancyResults(uniqueMatingIds, nextPregnancyResult, tx);
+    const updatedEvents =
+      currentPregnancyResult === nextPregnancyResult
+        ? { count: 0 }
+        : await updateMatingEventPregnancyResults(uniqueMatingIds, nextPregnancyResult, tx);
 
     if (
       currentPregnancyResult !== nextPregnancyResult &&
@@ -382,12 +412,7 @@ export const updatePregnancyResult = async (
       );
     }
 
-    await updateAffectedSowStatuses(
-      tx,
-      events,
-      currentPregnancyResult,
-      nextPregnancyResult,
-    );
+    await updateAffectedSowStatuses(tx, events, currentPregnancyResult, nextPregnancyResult);
 
     return updatedEvents;
   });

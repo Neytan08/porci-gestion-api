@@ -6,24 +6,6 @@ const router = Router();
 
 /**
  * @swagger
- * components:
- *   schemas:
- *     ApiErrorResponse:
- *       type: object
- *       properties:
- *         status:
- *           type: integer
- *           example: 409
- *         errorCode:
- *           type: string
- *           example: SOW_NOT_EMPTY
- *         message:
- *           type: string
- *           example: The sow must be in empty status before creating a mating event.
- */
-
-/**
- * @swagger
  * tags:
  *   name: MatingEvents
  *   description: Operations related to mating events of sows and boars
@@ -78,7 +60,7 @@ router.get("/:id", asyncHandler(matingEventsController.getById.bind(matingEvents
  * /matingevents:
  *   post:
  *     summary: Create a new mating event
- *     description: Starts a reproductive workflow for an empty sow. Positivo moves the sow to gestation; Pendiente and Negativo leave it empty.
+ *     description: Starts a reproductive workflow for an empty sow. The reproduction date cannot precede entry and must be at least 14 days after the last actual weaning. Positivo moves the sow to gestation; Pendiente and Negativo leave it empty.
  *     tags: [MatingEvents]
  *     requestBody:
  *       required: true
@@ -98,7 +80,7 @@ router.get("/:id", asyncHandler(matingEventsController.getById.bind(matingEvents
  *                 example: 1
  *               reproduction_date:
  *                 type: string
- *                 description: Calendar date supplied as M/D/YYYY, YYYY-MM-DD, or an ISO 8601 timestamp with an offset
+ *                 description: Calendar date supplied as M/D/YYYY, YYYY-MM-DD, or an ISO 8601 timestamp with an offset; on or after sow entry and at least 14 days after the last actual weaning
  *                 example: "2025-10-05"
  *               reproduction_type:
  *                 type: string
@@ -115,7 +97,7 @@ router.get("/:id", asyncHandler(matingEventsController.getById.bind(matingEvents
  *       201:
  *         description: Mating event created successfully
  *       400:
- *         description: Validation error
+ *         description: Validation error or invalid reproductive chronology
  *         content:
  *           application/json:
  *             schema:

@@ -8,6 +8,14 @@ export const BREEDING_SOW_STATUSES = {
 
 export type BreedingSowStatus = (typeof BREEDING_SOW_STATUSES)[keyof typeof BREEDING_SOW_STATUSES];
 
+export const MANUALLY_ASSIGNABLE_BREEDING_SOW_STATUSES = [
+  BREEDING_SOW_STATUSES.vacia,
+  BREEDING_SOW_STATUSES.noProductiva,
+] as const;
+
+export type ManuallyAssignableBreedingSowStatus =
+  (typeof MANUALLY_ASSIGNABLE_BREEDING_SOW_STATUSES)[number];
+
 const BREEDING_SOW_STATUS_ORDER: Readonly<Record<string, number>> = {
   [BREEDING_SOW_STATUSES.gestacion]: 0,
   [BREEDING_SOW_STATUSES.lactancia]: 1,
@@ -31,10 +39,10 @@ export const normalizeSowTagNumber = (sowTagNumber: string) =>
 /** Checks whether a status can be assigned when first registering a sow. */
 export const isAllowedBreedingSowCreationStatus = (
   status: BreedingSowStatus,
-): status is
-  | typeof BREEDING_SOW_STATUSES.vacia
-  | typeof BREEDING_SOW_STATUSES.noProductiva =>
-  status === BREEDING_SOW_STATUSES.vacia || status === BREEDING_SOW_STATUSES.noProductiva;
+): status is ManuallyAssignableBreedingSowStatus =>
+  MANUALLY_ASSIGNABLE_BREEDING_SOW_STATUSES.some(
+    (manuallyAssignableStatus) => manuallyAssignableStatus === status,
+  );
 
 /** Resolves the list priority for active sow statuses. */
 export const getBreedingSowStatusOrder = (status: string | null) => {
@@ -46,10 +54,8 @@ export const getBreedingSowStatusOrder = (status: string | null) => {
 };
 
 /** Identifies records that have already entered the permanent retirement workflow. */
-export const isRetiredBreedingSow = (sow: {
-  status: string | null;
-  removal_date: Date | null;
-}) => sow.status === BREEDING_SOW_STATUSES.retirada || sow.removal_date !== null;
+export const isRetiredBreedingSow = (sow: { status: string | null; removal_date: Date | null }) =>
+  sow.status === BREEDING_SOW_STATUSES.retirada || sow.removal_date !== null;
 
 /**
  * Converts user-facing status input into the canonical value stored by the API.

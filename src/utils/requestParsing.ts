@@ -1,9 +1,11 @@
-/**
- * Confirms that a parsed route value is a positive integer before a controller
- * delegates the request to the service layer.
- */
+import { POSTGRESQL_INTEGER_MAX } from "../schemas_validations/common.schema";
+
+/** Confirms that a parsed route value fits a positive PostgreSQL integer identifier. */
 const isPositiveInteger = (value: unknown): value is number =>
-  typeof value === "number" && Number.isInteger(value) && value > 0;
+  typeof value === "number" &&
+  Number.isInteger(value) &&
+  value > 0 &&
+  value <= POSTGRESQL_INTEGER_MAX;
 
 /**
  * Converts route params into numeric ids and raises the module-specific error

@@ -3,15 +3,9 @@ import prisma from "../../prismaClient";
 import { getActiveFarrowingBySowId } from "../farrowings/farrowingsQueries";
 import { getBlockingMatingEventBySowId } from "../matingEvents/matingEventsQueries";
 import { breedingSowErrors } from "./breedingSowErrors";
-import {
-  BREEDING_SOW_STATUSES,
-  type BreedingSowStatus,
-} from "./breedingSowsRules";
+import type { ManuallyAssignableBreedingSowStatus } from "./breedingSowsRules";
 
-type ManualStatusChangeQueryClient = Pick<
-  Prisma.TransactionClient,
-  "matingevents" | "farrowings"
->;
+type ManualStatusChangeQueryClient = Pick<Prisma.TransactionClient, "matingevents" | "farrowings">;
 
 /**
  * Manual sow status changes are blocked while a MatingEvent (Pending/Positive)
@@ -20,7 +14,7 @@ type ManualStatusChangeQueryClient = Pick<
 export const ensureManualStatusChangeIsAllowed = async (
   sowId: number,
   currentStatus: string | null,
-  newStatus: Exclude<BreedingSowStatus, typeof BREEDING_SOW_STATUSES.retirada>,
+  newStatus: ManuallyAssignableBreedingSowStatus,
   queryClient: ManualStatusChangeQueryClient = prisma,
 ): Promise<void> => {
   if (currentStatus === newStatus) {
@@ -30,20 +24,12 @@ export const ensureManualStatusChangeIsAllowed = async (
   const blockingMatingEvent = await getBlockingMatingEventBySowId(sowId, queryClient);
 
   if (blockingMatingEvent) {
-    throw breedingSowErrors.manualStatusChangeBlockedByMatingEvent(
-      sowId,
-      currentStatus,
-      newStatus,
-    );
+    throw breedingSowErrors.manualStatusChangeBlockedByMatingEvent(sowId, currentStatus, newStatus);
   }
 
   const activeFarrowing = await getActiveFarrowingBySowId(sowId, queryClient);
 
   if (activeFarrowing) {
-    throw breedingSowErrors.manualStatusChangeBlockedByFarrowing(
-      sowId,
-      currentStatus,
-      newStatus,
-    );
+    throw breedingSowErrors.manualStatusChangeBlockedByFarrowing(sowId, currentStatus, newStatus);
   }
 };

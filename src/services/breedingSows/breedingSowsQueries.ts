@@ -11,10 +11,7 @@ import type {
   UpdateBreedingSowInput,
 } from "./breedingSowsTypes";
 
-type BreedingSowsQueryClient = Pick<
-  Prisma.TransactionClient,
-  "breedingsows" | "$queryRaw"
->;
+type BreedingSowsQueryClient = Pick<Prisma.TransactionClient, "breedingsows" | "$queryRaw">;
 
 export const activeBreedingSowWhere = {
   removal_date: null,
@@ -25,6 +22,11 @@ type LockedBreedingSowStatus = {
   sow_id: number;
   status: string | null;
   removal_date: Date | null;
+};
+
+type LockedBreedingSowMatingState = LockedBreedingSowStatus & {
+  entry_date: Date;
+  last_weaning_date: Date | null;
 };
 
 /** Returns the active breeding-sow collection with breed data. */
@@ -69,8 +71,8 @@ export const getActiveBreedingSowWithStatusForUpdate = async (
   sowId: number,
   queryClient: BreedingSowsQueryClient,
 ) => {
-  const sows = await queryClient.$queryRaw<LockedBreedingSowStatus[]>(Prisma.sql`
-    SELECT sow_id, status, removal_date
+  const sows = await queryClient.$queryRaw<LockedBreedingSowMatingState[]>(Prisma.sql`
+    SELECT sow_id, status, removal_date, entry_date, last_weaning_date
     FROM breedingsows
     WHERE sow_id = ${sowId}
       AND removal_date IS NULL
@@ -185,7 +187,16 @@ export const updateActiveBreedingSowById = async (
 ) => {
   return await queryClient.breedingsows.update({
     where: { sow_id: id, ...activeBreedingSowWhere },
-    data,
+    data: {
+      status: data.status,
+      breed_id: data.breed_id,
+      sow_tag_number: data.sow_tag_number,
+      entry_date: data.entry_date,
+      weight: data.weight,
+      length: data.length,
+      mammary_glands: data.mammary_glands,
+      description: data.description,
+    },
   });
 };
 
@@ -277,10 +288,7 @@ export const applyFarrowingToBreedingSow = async (
 ) => {
   return await queryClient.breedingsows.updateMany({
     where: {
-      AND: [
-        { sow_id: sowId, status: BREEDING_SOW_STATUSES.gestacion },
-        activeBreedingSowWhere,
-      ],
+      AND: [{ sow_id: sowId, status: BREEDING_SOW_STATUSES.gestacion }, activeBreedingSowWhere],
     },
     data: {
       farrowing_number: { increment: 1 },

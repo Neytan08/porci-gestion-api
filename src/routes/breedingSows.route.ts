@@ -168,8 +168,8 @@ router.post("/", asyncHandler(BreedingSowController.create.bind(BreedingSowContr
  *             properties:
  *               status:
  *                 type: string
- *                 enum: [Vacia, Gestación, Lactancia, No Productiva]
- *                 example: "Gestación"
+ *                 enum: [Vacia, No Productiva]
+ *                 example: "No Productiva"
  *     responses:
  *       204:
  *         description: The proposed status change is allowed
@@ -207,7 +207,7 @@ router.post(
  *             properties:
  *               status:
  *                 type: string
- *                 enum: [Vacia, Gestación, Lactancia, No Productiva]
+ *                 enum: [Vacia, No Productiva]
  *                 example: "No Productiva"
  *               breed_id:
  *                 type: integer
@@ -295,10 +295,7 @@ router.put("/:id", asyncHandler(BreedingSowController.update.bind(BreedingSowCon
  *       409:
  *         description: One or more breeding sows were already retired or changed concurrently
  */
-router.patch(
-  "/retire",
-  asyncHandler(BreedingSowController.retire.bind(BreedingSowController)),
-);
+router.patch("/retire", asyncHandler(BreedingSowController.retire.bind(BreedingSowController)));
 
 /**
  * @swagger

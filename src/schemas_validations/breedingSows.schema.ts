@@ -1,31 +1,16 @@
 import { z } from "zod";
 import {
-  BREEDING_SOW_STATUSES,
   isAllowedBreedingSowCreationStatus,
   normalizeSowTagNumber,
   parseBreedingSowStatus,
 } from "../services/breedingSows/breedingSowsRules";
 import { parseCalendarDateInput } from "../utils/calendarDateInput";
+import {
+  animalMeasurementSchema,
+  databaseIdSchema,
+  nonNegativeDatabaseIntegerSchema,
+} from "./common.schema";
 
-const breedingSowStatusNames = Object.values(BREEDING_SOW_STATUSES)
-  .filter((status) => status !== BREEDING_SOW_STATUSES.retirada)
-  .join(", ");
-
-const breedingSowStatusSchema = z.string().transform((status, context) => {
-  const parsedStatus = parseBreedingSowStatus(status);
-
-  if (!parsedStatus) {
-    context.addIssue({
-      code: "custom",
-      message: `Status must be one of: ${breedingSowStatusNames}.`,
-    });
-    return z.NEVER;
-  }
-
-  return parsedStatus;
-});
-
-const positiveIdSchema = z.number().int().positive();
 const dateInputSchema = z.string().transform((value, context) => {
   const date = parseCalendarDateInput(value);
 
@@ -39,14 +24,14 @@ const dateInputSchema = z.string().transform((value, context) => {
 
   return date;
 });
-const measurementSchema = z.number().nonnegative().max(999.99).multipleOf(0.01);
-const breedingSowCreationStatusSchema = z.string().transform((status, context) => {
+
+const manuallyAssignableStatusSchema = z.string().transform((status, context) => {
   const parsedStatus = parseBreedingSowStatus(status);
 
   if (!parsedStatus || !isAllowedBreedingSowCreationStatus(parsedStatus)) {
     context.addIssue({
       code: "custom",
-      message: "Status must be Vacia or No Productiva when creating a breeding sow.",
+      message: "Status must be Vacia or No Productiva.",
     });
     return z.NEVER;
   }
@@ -56,29 +41,48 @@ const breedingSowCreationStatusSchema = z.string().transform((status, context) =
 
 // A purchased sow may bring a prior farrowing count, but lifecycle dates remain workflow-owned.
 export const breedingSowSchema = z.strictObject({
-  status: breedingSowCreationStatusSchema,
-  breed_id: z.number().int().positive(),
-  sow_tag_number: z.string().max(50).refine((tag) => normalizeSowTagNumber(tag).length > 0, {
-    message: "The breeding sow tag number cannot be blank",
-  }),
+  status: manuallyAssignableStatusSchema,
+  breed_id: databaseIdSchema,
+  sow_tag_number: z
+    .string()
+    .max(50)
+    .refine((tag) => normalizeSowTagNumber(tag).length > 0, {
+      message: "The breeding sow tag number cannot be blank",
+    }),
   entry_date: dateInputSchema,
-  weight: measurementSchema.nullable().optional(),
-  length: measurementSchema.nullable().optional(),
-  mammary_glands: z.number().int().positive(),
-  farrowing_number: z.number().int().nonnegative(),
+  weight: animalMeasurementSchema.nullable().optional(),
+  length: animalMeasurementSchema.nullable().optional(),
+  mammary_glands: databaseIdSchema,
+  farrowing_number: nonNegativeDatabaseIntegerSchema,
   description: z.string().nullable().optional(),
 });
 
-// Ordinary updates cannot overwrite imported history or workflow-owned lifecycle values.
-export const breedingSowUpdateSchema = breedingSowSchema.partial();
+// Ordinary updates expose profile fields while reproductive workflows retain history ownership.
+export const breedingSowUpdateSchema = z
+  .strictObject({
+    status: manuallyAssignableStatusSchema,
+    breed_id: databaseIdSchema,
+    sow_tag_number: z
+      .string()
+      .max(50)
+      .refine((tag) => normalizeSowTagNumber(tag).length > 0, {
+        message: "The breeding sow tag number cannot be blank",
+      }),
+    entry_date: dateInputSchema,
+    weight: animalMeasurementSchema.nullable(),
+    length: animalMeasurementSchema.nullable(),
+    mammary_glands: databaseIdSchema,
+    description: z.string().nullable(),
+  })
+  .partial();
 
-// Validation schema for changing the status of a breeding sow 
+// Validation schema for changing the status of a breeding sow
 export const breedingSowStatusChangeValidationSchema = z.strictObject({
-  status: breedingSowStatusSchema,
+  status: manuallyAssignableStatusSchema,
 });
 
 export const breedingSowRetireSchema = z.strictObject({
-  sow_ids: z.union([positiveIdSchema, z.array(positiveIdSchema).nonempty()]),
+  sow_ids: z.union([databaseIdSchema, z.array(databaseIdSchema).nonempty()]),
   removal_date: dateInputSchema.optional(),
   removal_reason: z.string().nullable().optional(),
 });

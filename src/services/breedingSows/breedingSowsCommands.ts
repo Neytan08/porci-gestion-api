@@ -27,11 +27,10 @@ import {
   updateActiveBreedingSowById,
 } from "./breedingSowsQueries";
 import {
-  type BREEDING_SOW_STATUSES,
   isBeforeDate,
-  isRetiredBreedingSow
+  isRetiredBreedingSow,
+  type ManuallyAssignableBreedingSowStatus,
 } from "./breedingSowsRules";
-import type { BreedingSowStatus } from "./breedingSowsRules";
 import { ensureManualStatusChangeIsAllowed } from "./breedingSowsStatusValidation";
 import type {
   CreateBreedingSowInput,
@@ -142,7 +141,7 @@ export const updateBreedingSow = async (id: number, data: UpdateBreedingSowInput
 /** Validates a proposed manual status change without mutating the active sow. */
 export const validateBreedingSowStatusChange = async (
   id: number,
-  status: Exclude<BreedingSowStatus, typeof BREEDING_SOW_STATUSES.retirada>,
+  status: ManuallyAssignableBreedingSowStatus,
 ) => {
   const sow = await getActiveBreedingSowWithStatus(id);
 
@@ -206,9 +205,7 @@ const ensureBreedingSowsCanBeRetired = (
     throw breedingSowErrors.breedingSowsNotFound(sowIds, missingSowIds);
   }
 
-  const retiredSowIds = sows
-    .filter(isRetiredBreedingSow)
-    .map(({ sow_id }) => sow_id);
+  const retiredSowIds = sows.filter(isRetiredBreedingSow).map(({ sow_id }) => sow_id);
 
   if (retiredSowIds.length > 0) {
     throw breedingSowErrors.breedingSowsAlreadyRetired(sowIds, retiredSowIds);
@@ -248,10 +245,7 @@ const ensureRetirementFarrowingDatesAreConsistent = (
  * Locks sows in identifier order before cancelling mating events, closing open
  * farrowings, and retiring the batch in one transaction.
  */
-export const retireBreedingSow = async (
-  ids: number[],
-  data: RetireBreedingSowInput,
-) => {
+export const retireBreedingSow = async (ids: number[], data: RetireBreedingSowInput) => {
   const uniqueSowIds = getUniqueBreedingSowIdsOrThrow(ids);
 
   return await prisma.$transaction(async (tx) => {

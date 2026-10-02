@@ -1,12 +1,11 @@
 import { z } from "zod";
+import { REPRODUCTION_TYPES } from "../services/matingEvents/matingEventsTypes";
 import {
   canPregnancyResultBeProvidedByRequest,
   parsePregnancyResult,
 } from "../services/matingEvents/pregnancyRules";
-import { REPRODUCTION_TYPES } from "../services/matingEvents/matingEventsTypes";
 import { parseCalendarDateInput } from "../utils/calendarDateInput";
-
-const positiveIdSchema = z.number().int().positive();
+import { databaseIdSchema } from "./common.schema";
 
 const calendarDateSchema = z.string().transform((value, context) => {
   const date = parseCalendarDateInput(value);
@@ -38,8 +37,8 @@ const pregnancyResultRequestSchema = z.string().transform((value, context) => {
 
 /** Validates and normalizes a new mating workflow request. */
 export const matingEventsSchema = z.strictObject({
-  sow_id: positiveIdSchema,
-  boar_id: positiveIdSchema.optional(),
+  sow_id: databaseIdSchema,
+  boar_id: databaseIdSchema.optional(),
   reproduction_date: calendarDateSchema,
   reproduction_type: z.enum([
     REPRODUCTION_TYPES.naturalMating,
@@ -51,6 +50,6 @@ export const matingEventsSchema = z.strictObject({
 
 /** Validates a single or bulk request to transition pregnancy results. */
 export const matingEventPregnancyResultUpdateSchema = z.strictObject({
-  mating_ids: z.union([positiveIdSchema, z.array(positiveIdSchema).nonempty()]),
+  mating_ids: z.union([databaseIdSchema, z.array(databaseIdSchema).nonempty()]),
   pregnancy_result: pregnancyResultRequestSchema,
 });

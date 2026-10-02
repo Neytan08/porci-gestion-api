@@ -89,10 +89,16 @@ router.get("/:id", asyncHandler(BoarsController.getById.bind(BoarsController)));
  *                 example: "B010"
  *               weight:
  *                 type: number
+ *                 minimum: 0
+ *                 maximum: 999.99
+ *                 multipleOf: 0.01
  *                 nullable: true
  *                 example: null
  *               length:
  *                 type: number
+ *                 minimum: 0
+ *                 maximum: 999.99
+ *                 multipleOf: 0.01
  *                 nullable: true
  *                 example: null
  *               birth_date:
@@ -146,10 +152,16 @@ router.post("/", asyncHandler(BoarsController.create.bind(BoarsController)));
  *                 example: 1
  *               weight:
  *                 type: number
+ *                 minimum: 0
+ *                 maximum: 999.99
+ *                 multipleOf: 0.01
  *                 nullable: true
  *                 example: 265.0
  *               length:
  *                 type: number
+ *                 minimum: 0
+ *                 maximum: 999.99
+ *                 multipleOf: 0.01
  *                 nullable: true
  *                 example: 162.0
  *               birth_date:

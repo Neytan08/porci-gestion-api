@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { normalizeBoarTagNumber } from "../services/boars/boarsRules";
 import { parseCalendarDateInput } from "../utils/calendarDateInput";
+import { animalMeasurementSchema, databaseIdSchema } from "./common.schema";
 
-const positiveIdSchema = z.number().int().positive();
 const dateInputSchema = z.string().transform((value, context) => {
   const date = parseCalendarDateInput(value);
   if (!date) {
@@ -17,12 +17,15 @@ const dateInputSchema = z.string().transform((value, context) => {
 
 // Ignore response-only fields when a client sends a loaded boar back for editing.
 export const boarsSchema = z.object({
-  boar_tag_number: z.string().max(50).refine((tag) => normalizeBoarTagNumber(tag).length > 0, {
-    message: "The boar tag number cannot be blank",
-  }),
-  breed_id: positiveIdSchema,
-  weight: z.number().nullable().optional(),
-  length: z.number().nullable().optional(),
+  boar_tag_number: z
+    .string()
+    .max(50)
+    .refine((tag) => normalizeBoarTagNumber(tag).length > 0, {
+      message: "The boar tag number cannot be blank",
+    }),
+  breed_id: databaseIdSchema,
+  weight: animalMeasurementSchema.nullable().optional(),
+  length: animalMeasurementSchema.nullable().optional(),
   birth_date: dateInputSchema,
   description: z.string().nullable().optional(),
 });
@@ -30,7 +33,7 @@ export const boarsSchema = z.object({
 export const boarsUpdateSchema = boarsSchema.partial();
 
 export const boarsRetireSchema = z.strictObject({
-  boar_ids: z.union([positiveIdSchema, z.array(positiveIdSchema).nonempty()]),
+  boar_ids: z.union([databaseIdSchema, z.array(databaseIdSchema).nonempty()]),
   removal_date: dateInputSchema,
   removal_reason: z.string().trim().min(1),
 });

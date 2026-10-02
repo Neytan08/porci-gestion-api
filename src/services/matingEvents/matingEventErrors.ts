@@ -22,6 +22,8 @@ export const MATING_EVENT_ERROR_CODES = {
   PREGNANCY_RESULT_TRANSITION_NOT_ALLOWED: "PREGNANCY_RESULT_TRANSITION_NOT_ALLOWED",
   MATING_EVENT_HAS_FARROWINGS: "MATING_EVENT_HAS_FARROWINGS",
   MATING_EVENT_TRANSACTION_STATE_CHANGED: "MATING_EVENT_TRANSACTION_STATE_CHANGED",
+  REPRODUCTION_DATE_BEFORE_SOW_ENTRY: "REPRODUCTION_DATE_BEFORE_SOW_ENTRY",
+  REPRODUCTION_DATE_BEFORE_POST_WEANING_INTERVAL: "REPRODUCTION_DATE_BEFORE_POST_WEANING_INTERVAL",
 } as const;
 
 type MatingEventErrorCode =
@@ -59,10 +61,7 @@ export const matingEventErrors = {
       { issues },
     ),
 
-  invalidMatingEventId: (
-    rawValue: unknown,
-    operation: "retrieve" | "delete",
-  ) =>
+  invalidMatingEventId: (rawValue: unknown, operation: "retrieve" | "delete") =>
     createMatingEventError(
       400,
       MATING_EVENT_ERROR_CODES.MATING_EVENT_ID_INVALID,
@@ -107,10 +106,7 @@ export const matingEventErrors = {
       { boarId },
     ),
 
-  matingEventNotFound: (
-    matingEventId: number,
-    operation: "retrieve" | "delete",
-  ) =>
+  matingEventNotFound: (matingEventId: number, operation: "retrieve" | "delete") =>
     createMatingEventError(
       404,
       MATING_EVENT_ERROR_CODES.MATING_EVENT_NOT_FOUND,
@@ -159,10 +155,7 @@ export const matingEventErrors = {
       { matingIds },
     ),
 
-  invalidPregnancyResult: (
-    pregnancyResult: unknown,
-    operation: "create" | "update" = "update",
-  ) =>
+  invalidPregnancyResult: (pregnancyResult: unknown, operation: "create" | "update" = "update") =>
     createMatingEventError(
       400,
       MATING_EVENT_ERROR_CODES.PREGNANCY_RESULT_INVALID,
@@ -209,10 +202,7 @@ export const matingEventErrors = {
       { matingEventId, currentPregnancyResult },
     ),
 
-  mixedCurrentPregnancyResults: (
-    requestedMatingIds: number[],
-    currentPregnancyResults: string[],
-  ) =>
+  mixedCurrentPregnancyResults: (requestedMatingIds: number[], currentPregnancyResults: string[]) =>
     createMatingEventError(
       409,
       MATING_EVENT_ERROR_CODES.MIXED_CURRENT_PREGNANCY_RESULTS,
@@ -232,6 +222,29 @@ export const matingEventErrors = {
       "The requested pregnancy result transition is not allowed.",
       "Cannot update pregnancy result",
       { currentPregnancyResult, nextPregnancyResult, requestedMatingIds },
+    ),
+
+  reproductionDateBeforeSowEntry: (sowId: number, reproductionDate: Date, entryDate: Date) =>
+    createMatingEventError(
+      400,
+      MATING_EVENT_ERROR_CODES.REPRODUCTION_DATE_BEFORE_SOW_ENTRY,
+      "The reproduction date cannot be before the sow entry date.",
+      "Cannot create mating event before sow entry",
+      { sowId, reproductionDate, entryDate },
+    ),
+
+  reproductionDateBeforePostWeaningInterval: (
+    sowId: number,
+    reproductionDate: Date,
+    lastWeaningDate: Date,
+    minimumIntervalDays: number,
+  ) =>
+    createMatingEventError(
+      400,
+      MATING_EVENT_ERROR_CODES.REPRODUCTION_DATE_BEFORE_POST_WEANING_INTERVAL,
+      `The reproduction date must be at least ${minimumIntervalDays} days after the last weaning date.`,
+      "Cannot create mating event before post-weaning interval",
+      { sowId, reproductionDate, lastWeaningDate, minimumIntervalDays },
     ),
 
   matingEventHasFarrowings: (matingEventId: number, farrowingCount?: number) =>

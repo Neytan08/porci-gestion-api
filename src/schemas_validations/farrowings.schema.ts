@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { parseCalendarDateInput } from "../utils/calendarDateInput";
+import { databaseIdSchema, nonNegativeDatabaseIntegerSchema } from "./common.schema";
 
 /** Validates supported calendar input and normalizes it before domain workflows run. */
 const calendarDateSchema = (fieldName: string) =>
@@ -17,12 +18,12 @@ const calendarDateSchema = (fieldName: string) =>
     return date;
   });
 
-const nonNegativeIntegerSchema = z.number().int().nonnegative();
+const nonNegativeIntegerSchema = nonNegativeDatabaseIntegerSchema;
 const optionalCountWithZeroDefault = nonNegativeIntegerSchema.optional().default(0);
 
 // The planned weaning_date is derived; actual weaning fields belong to the wean endpoint.
 export const farrowingsSchema = z.object({
-  sow_id: z.number().int().positive(),
+  sow_id: databaseIdSchema,
   farrowing_date: calendarDateSchema("farrowing_date"),
   male_piglets: nonNegativeIntegerSchema,
   female_piglets: nonNegativeIntegerSchema,
