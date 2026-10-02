@@ -10,8 +10,6 @@ import breedRoutes from "./routes/breeds.route";
 import farrowingsRoutes from "./routes/farrowings.route";
 import healthRoutes from "./routes/health.route";
 import matingEventsRoutes from "./routes/matingEvents.route";
-import vaccinesRoutes from "./routes/vaccines.route";
-import vaccineTypesRoutes from "./routes/vaccineTypes.route";
 import { setupSwagger } from "./swagger";
 
 const app = express();
@@ -49,9 +47,6 @@ app.use("/api/breedingsows", breedingSowRoutes);
 app.use("/api/farrowings", farrowingsRoutes);
 app.use("/api/boars", boarsRoutes);
 app.use("/api/matingevents", matingEventsRoutes);
-// app.use("/api/notifications", notificationsRoutes);
-app.use("/api/vaccines", vaccinesRoutes);
-app.use("/api/vaccinetypes", vaccineTypesRoutes);
 
 setupSwagger(app, config.swaggerPath, config.apiBaseUrl);
 
