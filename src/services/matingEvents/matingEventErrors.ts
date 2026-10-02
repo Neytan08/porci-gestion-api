@@ -3,10 +3,12 @@ import ApiError, { type ApiErrorLogContext } from "../../utils/apiError";
 
 export const MATING_EVENT_ERROR_CODES = {
   MATING_EVENT_BODY_INVALID: "MATING_EVENT_BODY_INVALID",
-  MATING_EVENT_UPDATE_BODY_INVALID: "MATING_EVENT_UPDATE_BODY_INVALID",
+  MATING_EVENT_PREGNANCY_UPDATE_BODY_INVALID: "MATING_EVENT_PREGNANCY_UPDATE_BODY_INVALID",
   MATING_EVENT_ID_INVALID: "MATING_EVENT_ID_INVALID",
   SOW_ID_INVALID: "SOW_ID_INVALID",
   BOAR_ID_INVALID: "BOAR_ID_INVALID",
+  BOAR_RETIRED: "BOAR_RETIRED",
+  BOAR_NOT_FOUND: "BOAR_NOT_FOUND",
   MATING_EVENT_NOT_FOUND: "MATING_EVENT_NOT_FOUND",
   SOW_NOT_FOUND: "SOW_NOT_FOUND",
   SOW_NOT_EMPTY: "SOW_NOT_EMPTY",
@@ -18,6 +20,10 @@ export const MATING_EVENT_ERROR_CODES = {
   MIXED_CURRENT_PREGNANCY_RESULTS: "MIXED_CURRENT_PREGNANCY_RESULTS",
   PREGNANCY_RESULT_INVALID: "PREGNANCY_RESULT_INVALID",
   PREGNANCY_RESULT_TRANSITION_NOT_ALLOWED: "PREGNANCY_RESULT_TRANSITION_NOT_ALLOWED",
+  MATING_EVENT_HAS_FARROWINGS: "MATING_EVENT_HAS_FARROWINGS",
+  MATING_EVENT_TRANSACTION_STATE_CHANGED: "MATING_EVENT_TRANSACTION_STATE_CHANGED",
+  REPRODUCTION_DATE_BEFORE_SOW_ENTRY: "REPRODUCTION_DATE_BEFORE_SOW_ENTRY",
+  REPRODUCTION_DATE_BEFORE_POST_WEANING_INTERVAL: "REPRODUCTION_DATE_BEFORE_POST_WEANING_INTERVAL",
 } as const;
 
 type MatingEventErrorCode =
@@ -46,19 +52,16 @@ export const matingEventErrors = {
       { issues },
     ),
 
-  invalidUpdatePayload: (issues: ZodIssue[]) =>
+  invalidPregnancyUpdatePayload: (issues: ZodIssue[]) =>
     createMatingEventError(
       400,
-      MATING_EVENT_ERROR_CODES.MATING_EVENT_UPDATE_BODY_INVALID,
-      "The request body contains invalid fields for updating the mating event.",
-      "Cannot update mating event",
+      MATING_EVENT_ERROR_CODES.MATING_EVENT_PREGNANCY_UPDATE_BODY_INVALID,
+      "The request body contains invalid pregnancy-result update data.",
+      "Cannot update mating event pregnancy result",
       { issues },
     ),
 
-  invalidMatingEventId: (
-    rawValue: unknown,
-    operation: "retrieve" | "update" | "delete",
-  ) =>
+  invalidMatingEventId: (rawValue: unknown, operation: "retrieve" | "delete") =>
     createMatingEventError(
       400,
       MATING_EVENT_ERROR_CODES.MATING_EVENT_ID_INVALID,
@@ -85,10 +88,25 @@ export const matingEventErrors = {
       { boarId: rawValue },
     ),
 
-  matingEventNotFound: (
-    matingEventId: number,
-    operation: "retrieve" | "update" | "delete",
-  ) =>
+  boarRetired: (boarId: number) =>
+    createMatingEventError(
+      409,
+      MATING_EVENT_ERROR_CODES.BOAR_RETIRED,
+      "A retired boar cannot be assigned to a mating event.",
+      "Cannot assign retired boar to mating event",
+      { boarId },
+    ),
+
+  boarNotFound: (boarId: number) =>
+    createMatingEventError(
+      404,
+      MATING_EVENT_ERROR_CODES.BOAR_NOT_FOUND,
+      "The selected boar was not found.",
+      "Cannot assign boar to mating event",
+      { boarId },
+    ),
+
+  matingEventNotFound: (matingEventId: number, operation: "retrieve" | "delete") =>
     createMatingEventError(
       404,
       MATING_EVENT_ERROR_CODES.MATING_EVENT_NOT_FOUND,
@@ -137,12 +155,12 @@ export const matingEventErrors = {
       { matingIds },
     ),
 
-  invalidPregnancyResult: (pregnancyResult: unknown) =>
+  invalidPregnancyResult: (pregnancyResult: unknown, operation: "create" | "update" = "update") =>
     createMatingEventError(
       400,
       MATING_EVENT_ERROR_CODES.PREGNANCY_RESULT_INVALID,
       "The pregnancy_result must be 'Pendiente', 'Positivo' or 'Negativo'.",
-      "Cannot update pregnancy result",
+      `Cannot ${operation} mating event pregnancy result`,
       { pregnancyResult },
     ),
 
@@ -184,10 +202,7 @@ export const matingEventErrors = {
       { matingEventId, currentPregnancyResult },
     ),
 
-  mixedCurrentPregnancyResults: (
-    requestedMatingIds: number[],
-    currentPregnancyResults: string[],
-  ) =>
+  mixedCurrentPregnancyResults: (requestedMatingIds: number[], currentPregnancyResults: string[]) =>
     createMatingEventError(
       409,
       MATING_EVENT_ERROR_CODES.MIXED_CURRENT_PREGNANCY_RESULTS,
@@ -207,5 +222,51 @@ export const matingEventErrors = {
       "The requested pregnancy result transition is not allowed.",
       "Cannot update pregnancy result",
       { currentPregnancyResult, nextPregnancyResult, requestedMatingIds },
+    ),
+
+  reproductionDateBeforeSowEntry: (sowId: number, reproductionDate: Date, entryDate: Date) =>
+    createMatingEventError(
+      400,
+      MATING_EVENT_ERROR_CODES.REPRODUCTION_DATE_BEFORE_SOW_ENTRY,
+      "The reproduction date cannot be before the sow entry date.",
+      "Cannot create mating event before sow entry",
+      { sowId, reproductionDate, entryDate },
+    ),
+
+  reproductionDateBeforePostWeaningInterval: (
+    sowId: number,
+    reproductionDate: Date,
+    lastWeaningDate: Date,
+    minimumIntervalDays: number,
+  ) =>
+    createMatingEventError(
+      400,
+      MATING_EVENT_ERROR_CODES.REPRODUCTION_DATE_BEFORE_POST_WEANING_INTERVAL,
+      `The reproduction date must be at least ${minimumIntervalDays} days after the last weaning date.`,
+      "Cannot create mating event before post-weaning interval",
+      { sowId, reproductionDate, lastWeaningDate, minimumIntervalDays },
+    ),
+
+  matingEventHasFarrowings: (matingEventId: number, farrowingCount?: number) =>
+    createMatingEventError(
+      409,
+      MATING_EVENT_ERROR_CODES.MATING_EVENT_HAS_FARROWINGS,
+      "The mating event cannot be deleted because it is referenced by farrowing history.",
+      "Cannot delete mating event with related farrowings",
+      { matingEventId, farrowingCount },
+    ),
+
+  transactionStateChanged: (
+    matingEventIds: number[],
+    reason: string,
+    expectedCount?: number,
+    actualCount?: number,
+  ) =>
+    createMatingEventError(
+      409,
+      MATING_EVENT_ERROR_CODES.MATING_EVENT_TRANSACTION_STATE_CHANGED,
+      "The reproductive state changed during the operation. Retry with the current data.",
+      "Cannot complete mating event transaction because reproductive state changed",
+      { matingEventIds, reason, expectedCount, actualCount },
     ),
 };

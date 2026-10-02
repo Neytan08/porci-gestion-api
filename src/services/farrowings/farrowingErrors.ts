@@ -3,7 +3,13 @@ import ApiError, { type ApiErrorLogContext } from "../../utils/apiError";
 
 export const FARROWING_ERROR_CODES = {
   FARROWING_BODY_INVALID: "FARROWING_BODY_INVALID",
-  FARROWING_UPDATE_BODY_INVALID: "FARROWING_UPDATE_BODY_INVALID",
+  FARROWING_WEAN_BODY_INVALID: "FARROWING_WEAN_BODY_INVALID",
+  FARROWING_WEAN_DATE_INVALID: "FARROWING_WEAN_DATE_INVALID",
+  FARROWING_DATE_BEFORE_REPRODUCTION: "FARROWING_DATE_BEFORE_REPRODUCTION",
+  FARROWING_ALREADY_WEANED: "FARROWING_ALREADY_WEANED",
+  FARROWING_COMPLETED_DELETE_FORBIDDEN: "FARROWING_COMPLETED_DELETE_FORBIDDEN",
+  FARROWING_STATE_CHANGED: "FARROWING_STATE_CHANGED",
+  SOW_NOT_LACTATING: "SOW_NOT_LACTATING",
   FARROWING_ID_INVALID: "FARROWING_ID_INVALID",
   SOW_ID_INVALID: "SOW_ID_INVALID",
   FARROWING_NOT_FOUND: "FARROWING_NOT_FOUND",
@@ -38,6 +44,81 @@ const createFarrowingError = (
   });
 
 export const farrowingErrors = {
+  /** Both weaning fields must pass the dedicated request schema. */
+  invalidWeanPayload: (issues: ZodIssue[]) =>
+    createFarrowingError(
+      400,
+      FARROWING_ERROR_CODES.FARROWING_WEAN_BODY_INVALID,
+      "The request body must contain a valid weaned_date and a nonnegative integer weaned_piglets.",
+      "Cannot wean farrowing",
+      { issues },
+    ),
+
+  /** Normal weaning cannot be recorded before the farrowing date. */
+  invalidWeanDate: (farrowingId: number) =>
+    createFarrowingError(
+      400,
+      FARROWING_ERROR_CODES.FARROWING_WEAN_DATE_INVALID,
+      "The weaned date cannot be before the farrowing date.",
+      "Invalid farrowing and weaning date order",
+      { farrowingId },
+    ),
+
+  /** A farrowing must occur strictly after its associated reproduction event. */
+  farrowingDateBeforeReproduction: (
+    sowId: number,
+    matingId: number,
+    reproductionDate: Date,
+    farrowingDate: Date,
+  ) =>
+    createFarrowingError(
+      400,
+      FARROWING_ERROR_CODES.FARROWING_DATE_BEFORE_REPRODUCTION,
+      "The farrowing date must be after the reproduction date.",
+      "Cannot create farrowing with inconsistent reproductive dates",
+      { sowId, matingId, reproductionDate, farrowingDate },
+    ),
+
+  /** A recorded date marks completed weaning even when the piglet count is zero. */
+  alreadyWeaned: (farrowingId: number) =>
+    createFarrowingError(
+      409,
+      FARROWING_ERROR_CODES.FARROWING_ALREADY_WEANED,
+      "The farrowing has already been weaned.",
+      "Cannot wean farrowing twice",
+      { farrowingId },
+    ),
+
+  /** Completed farrowings are permanent reproductive history. */
+  completedFarrowingCannotBeDeleted: (farrowingId: number) =>
+    createFarrowingError(
+      409,
+      FARROWING_ERROR_CODES.FARROWING_COMPLETED_DELETE_FORBIDDEN,
+      "A completed farrowing cannot be deleted.",
+      "Cannot delete completed farrowing history",
+      { farrowingId },
+    ),
+
+  /** A locked related record no longer matches the farrowing workflow state. */
+  farrowingStateChanged: (farrowingId: number, operation: "delete" | "wean") =>
+    createFarrowingError(
+      409,
+      FARROWING_ERROR_CODES.FARROWING_STATE_CHANGED,
+      "The farrowing or its related reproductive state changed before the operation could finish.",
+      `Cannot ${operation} farrowing because its state changed`,
+      { farrowingId },
+    ),
+
+  /** Only a lactating sow can finish the weaning workflow. */
+  sowNotLactating: (sowId: number, currentStatus: string | null) =>
+    createFarrowingError(
+      409,
+      FARROWING_ERROR_CODES.SOW_NOT_LACTATING,
+      "The sow must be in lactation status before weaning.",
+      "Cannot wean farrowing",
+      { sowId, currentStatus },
+    ),
+
   /** The create payload failed the farrowing creation schema validation. */
   invalidCreatePayload: (issues: ZodIssue[]) =>
     createFarrowingError(
@@ -48,18 +129,8 @@ export const farrowingErrors = {
       { issues },
     ),
 
-  /** The update payload contains fields or values rejected by the farrowing update schema. */
-  invalidUpdatePayload: (issues: ZodIssue[]) =>
-    createFarrowingError(
-      400,
-      FARROWING_ERROR_CODES.FARROWING_UPDATE_BODY_INVALID,
-      "The request body contains invalid fields for updating the farrowing.",
-      "Cannot update farrowing",
-      { issues },
-    ),
-
   /** The farrowing route id is missing, non-numeric, or not a positive integer. */
-  invalidFarrowingId: (rawValue: unknown, operation: "retrieve" | "update" | "delete") =>
+  invalidFarrowingId: (rawValue: unknown, operation: "retrieve" | "delete" | "wean") =>
     createFarrowingError(
       400,
       FARROWING_ERROR_CODES.FARROWING_ID_INVALID,
@@ -79,7 +150,7 @@ export const farrowingErrors = {
     ),
 
   /** The requested farrowing id does not match an existing farrowing record. */
-  farrowingNotFound: (farrowingId: number, operation: "retrieve" | "update" | "delete") =>
+  farrowingNotFound: (farrowingId: number, operation: "retrieve" | "delete" | "wean") =>
     createFarrowingError(
       404,
       FARROWING_ERROR_CODES.FARROWING_NOT_FOUND,

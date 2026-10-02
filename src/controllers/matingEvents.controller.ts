@@ -1,49 +1,16 @@
 import type { Request, Response } from "express";
 import {
+  matingEventPregnancyResultUpdateSchema,
   matingEventsSchema,
-  matingEventUpdateSchema,
 } from "../schemas_validations/matingEvents.schema";
 import { matingEventErrors } from "../services/matingEvents/matingEventErrors";
 import MatingEventsService from "../services/matingEvents/matingEventsService";
-import logger from "../utils/logger";
-
-/**
- * Guards the endpoint against non-integer or non-positive ids before hitting the service layer.
- */
-const isPositiveInteger = (value: unknown): value is number =>
-  typeof value === "number" && Number.isInteger(value) && value > 0;
-
-const parsePositiveIdOrThrow = (
-  value: unknown,
-  buildError: (rawValue: unknown) => Error,
-) => {
-  const parsedValue = Number(value);
-
-  if (!isPositiveInteger(parsedValue)) {
-    throw buildError(value);
-  }
-
-  return parsedValue;
-};
-
-/**
- * Normalizes a single id or an id list into the deduplicated batch format expected by the service.
- */
-const parseMatingIds = (value: unknown) => {
-  const rawIds = Array.isArray(value) ? value : [value];
-
-  if (rawIds.length === 0 || !rawIds.every(isPositiveInteger)) {
-    return null;
-  }
-
-  return Array.from(new Set(rawIds));
-};
+import { parsePositiveIdOrThrow, parsePositiveIdsOrThrow } from "../utils/requestParsing";
 
 class MatingEventsController {
   async getAll(_: Request, res: Response) {
     const events = await MatingEventsService.getAll();
-    logger.info("Fetched mating events", { count: events.length });
-    res.json(events);
+    return res.json(events);
   }
 
   async getById(req: Request, res: Response) {
@@ -56,7 +23,6 @@ class MatingEventsController {
       throw matingEventErrors.matingEventNotFound(id, "retrieve");
     }
 
-    logger.info("Fetched mating event", { matingEventId: id });
     return res.json(event);
   }
 
@@ -68,106 +34,58 @@ class MatingEventsController {
     }
 
     const newEvent = await MatingEventsService.create(parseResult.data);
-
-    logger.info("Created mating event", {
-      matingEventId: newEvent.mating_id,
-      sowId: newEvent.sow_id,
-      boarId: newEvent.boar_id ?? null,
-    });
-
-    res.status(201).json(newEvent);
-  }
-
-  async update(req: Request, res: Response) {
-    const parseResult = matingEventUpdateSchema.safeParse(req.body);
-
-    if (!parseResult.success) {
-      throw matingEventErrors.invalidUpdatePayload(parseResult.error.issues);
-    }
-
-    const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
-      matingEventErrors.invalidMatingEventId(rawValue, "update"),
-    );
-    const updatedEvent = await MatingEventsService.update(id, parseResult.data);
-
-    logger.info("Updated mating event", {
-      matingEventId: updatedEvent.mating_id,
-      sowId: updatedEvent.sow_id,
-      boarId: updatedEvent.boar_id ?? null,
-    });
-
-    res.json(updatedEvent);
+    return res.status(201).json(newEvent);
   }
 
   async delete(req: Request, res: Response) {
     const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
       matingEventErrors.invalidMatingEventId(rawValue, "delete"),
     );
-    const deleted = await MatingEventsService.delete(id);
-
-    logger.info("Deleted mating event", {
-      matingEventId: deleted.mating_id,
-      sowId: deleted.sow_id,
-    });
-
-    res.status(204).send();
+    await MatingEventsService.delete(id);
+    return res.status(204).send();
   }
 
   async getAllMatingEventsBySow(req: Request, res: Response) {
     const sowId = parsePositiveIdOrThrow(req.params.sowId, matingEventErrors.invalidSowId);
     const events = await MatingEventsService.getAllMatingEventsBySow(sowId);
 
-    logger.info("Fetched mating events by sow", { sowId, count: events.length });
-    res.json(events);
+    return res.json(events);
   }
 
   async getAllMatingEventsByBoar(req: Request, res: Response) {
     const boarId = parsePositiveIdOrThrow(req.params.boarId, matingEventErrors.invalidBoarId);
     const events = await MatingEventsService.getAllMatingEventsByBoar(boarId);
 
-    logger.info("Fetched mating events by boar", { boarId, count: events.length });
-    res.json(events);
+    return res.json(events);
   }
 
   async getAllGroupedByPregnancyResult(_: Request, res: Response) {
     const groupedEvents = await MatingEventsService.getAllGroupedByPregnancyResult();
 
-    logger.info("Grouped mating events by pregnancy result", {
-      groups: groupedEvents.length,
-    });
-
-    res.json(groupedEvents);
+    return res.json(groupedEvents);
   }
 
   /**
    * Accepts single or bulk pregnancy-result updates and forwards a normalized payload to the service.
    */
   async updatePregnancyResult(req: Request, res: Response) {
-    const { mating_ids, pregnancy_result } = req.body ?? {};
-    const matingIds = parseMatingIds(mating_ids);
+    const parseResult = matingEventPregnancyResultUpdateSchema.safeParse(req.body);
 
-    if (!matingIds) {
-      throw matingEventErrors.invalidMatingIds(mating_ids);
+    if (!parseResult.success) {
+      throw matingEventErrors.invalidPregnancyUpdatePayload(parseResult.error.issues);
     }
 
-    if (typeof pregnancy_result !== "string" || pregnancy_result.trim().length === 0) {
-      throw matingEventErrors.invalidPregnancyResult(pregnancy_result);
-    }
-
-    const normalizedPregnancyResult = pregnancy_result.trim();
+    const matingIds = parsePositiveIdsOrThrow(
+      parseResult.data.mating_ids,
+      matingEventErrors.invalidMatingIds,
+    );
 
     const result = await MatingEventsService.updatePregnancyResult(
       matingIds,
-      normalizedPregnancyResult,
+      parseResult.data.pregnancy_result,
     );
 
-    logger.info("Updated mating event pregnancy result", {
-      matingIds,
-      pregnancyResult: normalizedPregnancyResult,
-      updatedCount: result.count,
-    });
-
-    res.json(result);
+    return res.json(result);
   }
 }
 

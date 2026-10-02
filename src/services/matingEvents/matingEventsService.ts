@@ -1,8 +1,7 @@
-import type { Prisma } from "@prisma/client";
+import logger from "../../utils/logger";
 import {
   createMatingEvent,
   deleteMatingEvent,
-  updateMatingEvent,
   updatePregnancyResult as updateMatingEventsPregnancyResult,
 } from "./matingEventsCommands";
 import {
@@ -11,8 +10,9 @@ import {
   getMatingEventsByBoar,
   getMatingEventsBySow,
   getMatingEventsGroupedByPregnancyResult,
-  getSowByIdWithStatus,
 } from "./matingEventsQueries";
+import type { CreateMatingEventInput } from "./matingEventsTypes";
+import type { PregnancyResult } from "./pregnancyRules";
 
 /**
  * Keeps the public mating-events service API stable while delegating each responsibility to smaller modules.
@@ -22,24 +22,35 @@ class MatingEventsService {
     return await getAllMatingEvents();
   }
 
-  async getSowByIdWithStatus(sowId: number) {
-    return await getSowByIdWithStatus(sowId);
-  }
-
   async getById(id: number) {
     return await getMatingEventById(id);
   }
 
-  async create(data: Prisma.matingeventsUncheckedCreateInput) {
-    return await createMatingEvent(data);
+  /** Creates a mating event and records the committed reproductive operation. */
+  async create(data: CreateMatingEventInput) {
+    const createdEvent = await createMatingEvent(data);
+
+    logger.info("Created mating event", {
+      event: "mating_event.created",
+      matingEventId: createdEvent.mating_id,
+      sowId: createdEvent.sow_id,
+      boarId: createdEvent.boar_id ?? null,
+    });
+
+    return createdEvent;
   }
 
-  async update(id: number, data: Prisma.matingeventsUpdateInput) {
-    return await updateMatingEvent(id, data);
-  }
-
+  /** Deletes an eligible mating event and records the restored workflow state. */
   async delete(id: number) {
-    return await deleteMatingEvent(id);
+    const deletedEvent = await deleteMatingEvent(id);
+
+    logger.info("Deleted mating event", {
+      event: "mating_event.deleted",
+      matingEventId: deletedEvent.mating_id,
+      sowId: deletedEvent.sow_id,
+    });
+
+    return deletedEvent;
   }
 
   async getAllMatingEventsBySow(sowId: number) {
@@ -54,8 +65,18 @@ class MatingEventsService {
     return await getMatingEventsGroupedByPregnancyResult();
   }
 
-  async updatePregnancyResult(matingIds: number[], pregnancyResult: string) {
-    return await updateMatingEventsPregnancyResult(matingIds, pregnancyResult);
+  /** Updates pregnancy results and records the completed batch operation. */
+  async updatePregnancyResult(matingIds: number[], pregnancyResult: PregnancyResult) {
+    const result = await updateMatingEventsPregnancyResult(matingIds, pregnancyResult);
+
+    logger.info("Updated mating event pregnancy result", {
+      event: "mating_events.pregnancy_result_updated",
+      matingIds,
+      pregnancyResult,
+      updatedCount: result.count,
+    });
+
+    return result;
   }
 }
 

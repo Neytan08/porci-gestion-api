@@ -15,11 +15,11 @@ const router = Router();
  * @swagger
  * /breedingsows:
  *   get:
- *     summary: Get all breeding sows
+ *     summary: Get all active breeding sows
  *     tags: [BreedingSows]
  *     responses:
  *       200:
- *         description: List of all breeding sows
+ *         description: List of active breeding sows with their breed data
  */
 router.get("/", asyncHandler(BreedingSowController.getAll.bind(BreedingSowController)));
 
@@ -39,6 +39,8 @@ router.get("/", asyncHandler(BreedingSowController.getAll.bind(BreedingSowContro
  *     responses:
  *       200:
  *         description: Boolean result indicating whether the tag exists
+ *       400:
+ *         description: Invalid or blank sow tag number
  */
 router.get(
   "/check-sow-tag-number-exists/:sowTagNumber",
@@ -49,7 +51,7 @@ router.get(
  * @swagger
  * /breedingsows/{id}:
  *   get:
- *     summary: Get a breeding sow by ID
+ *     summary: Get an active breeding sow by ID
  *     tags: [BreedingSows]
  *     parameters:
  *       - in: path
@@ -60,7 +62,9 @@ router.get(
  *         description: ID of the breeding sow
  *     responses:
  *       200:
- *         description: Breeding sow found
+ *         description: Active breeding sow found
+ *       400:
+ *         description: Invalid breeding sow ID
  *       404:
  *         description: Breeding sow not found
  */
@@ -78,49 +82,65 @@ router.get("/:id", asyncHandler(BreedingSowController.getById.bind(BreedingSowCo
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - status
+ *               - breed_id
+ *               - sow_tag_number
+ *               - entry_date
+ *               - mammary_glands
+ *               - farrowing_number
  *             properties:
  *               status:
  *                 type: string
- *                 enum: [Gestacion, Lactancia, Vacia, No Productiva]
+ *                 enum: [Vacia, No Productiva]
  *                 example: "Vacia"
+ *               breed_id:
+ *                 type: integer
+ *                 minimum: 1
+ *                 example: 2
  *               sow_tag_number:
  *                 type: string
+ *                 maxLength: 50
  *                 example: "SOW-0010"
  *               entry_date:
  *                 type: string
- *                 format: date
+ *                 description: M/D/YYYY, YYYY-MM-DD, or an ISO 8601 timestamp with an offset
  *                 example: "2025-10-05"
  *               weight:
  *                 type: number
+ *                 minimum: 0
+ *                 maximum: 999.99
+ *                 multipleOf: 0.01
+ *                 nullable: true
  *                 example: 180.5
  *               length:
  *                 type: number
+ *                 minimum: 0
+ *                 maximum: 999.99
+ *                 multipleOf: 0.01
+ *                 nullable: true
  *                 example: 145.2
  *               mammary_glands:
  *                 type: integer
+ *                 minimum: 1
  *                 example: 14
- *               breed:
- *                 type: string
- *                 example: "Yorkshire"
  *               farrowing_number:
  *                 type: integer
+ *                 minimum: 0
  *                 example: 2
- *               last_weaning_date:
+ *               description:
  *                 type: string
- *                 format: date
- *                 example: "2025-09-15"
- *               removal_date:
- *                 type: string
- *                 format: date
- *                 example: null
- *               removal_reason:
- *                 type: string
- *                 example: null
+ *                 nullable: true
+ *                 example: "Purchased with two previous farrowings"
  *     responses:
  *       201:
  *         description: Breeding sow created successfully
  *       400:
- *         description: Validation error
+ *         description: Invalid request payload
+ *       404:
+ *         description: Selected breed not found
+ *       409:
+ *         description: Normalized sow tag number already exists
  */
 router.post("/", asyncHandler(BreedingSowController.create.bind(BreedingSowController)));
 
@@ -148,7 +168,8 @@ router.post("/", asyncHandler(BreedingSowController.create.bind(BreedingSowContr
  *             properties:
  *               status:
  *                 type: string
- *                 example: "Gestación"
+ *                 enum: [Vacia, No Productiva]
+ *                 example: "No Productiva"
  *     responses:
  *       204:
  *         description: The proposed status change is allowed
@@ -184,31 +205,53 @@ router.post(
  *           schema:
  *             type: object
  *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [Vacia, No Productiva]
+ *                 example: "No Productiva"
+ *               breed_id:
+ *                 type: integer
+ *                 minimum: 1
+ *                 example: 2
+ *               sow_tag_number:
+ *                 type: string
+ *                 maxLength: 50
+ *                 example: "SOW-0010"
+ *               entry_date:
+ *                 type: string
+ *                 description: M/D/YYYY, YYYY-MM-DD, or an ISO 8601 timestamp with an offset
+ *                 example: "2025-10-05"
  *               weight:
  *                 type: number
+ *                 minimum: 0
+ *                 maximum: 999.99
+ *                 multipleOf: 0.01
+ *                 nullable: true
  *                 example: 185.0
  *               length:
  *                 type: number
+ *                 minimum: 0
+ *                 maximum: 999.99
+ *                 multipleOf: 0.01
+ *                 nullable: true
  *                 example: 150.0
  *               mammary_glands:
  *                 type: integer
+ *                 minimum: 1
  *                 example: 16
- *               last_weaning_date:
+ *               description:
  *                 type: string
- *                 format: date
- *                 example: "2025-09-20"
- *               removal_date:
- *                 type: string
- *                 format: date
- *                 example: null
- *               removal_reason:
- *                 type: string
- *                 example: null
+ *                 nullable: true
+ *                 example: "Updated profile information"
  *     responses:
  *       200:
  *         description: Breeding sow updated successfully
+ *       400:
+ *         description: Invalid ID or request payload
  *       404:
- *         description: Breeding sow not found
+ *         description: Active breeding sow or selected breed not found
+ *       409:
+ *         description: Duplicate tag or status change blocked by a reproductive workflow
  */
 router.put("/:id", asyncHandler(BreedingSowController.update.bind(BreedingSowController)));
 
@@ -217,6 +260,7 @@ router.put("/:id", asyncHandler(BreedingSowController.update.bind(BreedingSowCon
  * /breedingsows/retire:
  *   patch:
  *     summary: Retire one or many breeding sows
+ *     description: Retirement is allowed from every lifecycle stage. Active farrowings are administratively closed with weaned_date equal to removal_date and zero weaned_piglets; last_weaning_date remains the most recent actual weaning.
  *     tags: [BreedingSows]
  *     requestBody:
  *       required: true
@@ -236,21 +280,22 @@ router.put("/:id", asyncHandler(BreedingSowController.update.bind(BreedingSowCon
  *                 example: [1, 2]
  *               removal_date:
  *                 type: string
- *                 format: date
+ *                 description: M/D/YYYY, YYYY-MM-DD, or an ISO 8601 timestamp with an offset
  *                 example: "2026-06-17"
  *               removal_reason:
  *                 type: string
  *                 example: "End of productive life"
  *     responses:
  *       200:
- *         description: Breeding sows retired successfully
+ *         description: Sows retired and open mating/farrowing workflows closed successfully
+ *       400:
+ *         description: Invalid IDs or payload, removal before sow entry, or removal before an active farrowing
  *       404:
  *         description: One or more breeding sows were not found
+ *       409:
+ *         description: One or more breeding sows were already retired or changed concurrently
  */
-router.patch(
-  "/retire",
-  asyncHandler(BreedingSowController.retire.bind(BreedingSowController)),
-);
+router.patch("/retire", asyncHandler(BreedingSowController.retire.bind(BreedingSowController)));
 
 /**
  * @swagger
@@ -268,8 +313,12 @@ router.patch(
  *     responses:
  *       204:
  *         description: Breeding sow deleted successfully
+ *       400:
+ *         description: Invalid breeding sow ID
  *       404:
- *         description: Breeding sow not found
+ *         description: Active breeding sow not found
+ *       409:
+ *         description: Breeding sow has reproductive history and must be retired instead
  */
 router.delete("/:id", asyncHandler(BreedingSowController.delete.bind(BreedingSowController)));
 
@@ -277,20 +326,21 @@ router.delete("/:id", asyncHandler(BreedingSowController.delete.bind(BreedingSow
  * @swagger
  * /breedingsows/status/{status}:
  *   get:
- *     summary: Get all breeding sows by status
+ *     summary: Get active breeding sows by status
  *     tags: [BreedingSows]
  *     parameters:
  *       - in: path
  *         name: status
  *         schema:
  *           type: string
+ *           enum: [Vacia, Gestación, Lactancia, No Productiva]
  *         required: true
  *         description: Status value to filter breeding sows
  *     responses:
  *       200:
- *         description: List of breeding sows with the specified status
- *       404:
- *         description: No breeding sows found for this status
+ *         description: List of active breeding sows with the specified status and breed data
+ *       400:
+ *         description: Invalid breeding sow status
  */
 router.get(
   "/status/:status",

@@ -1,4 +1,4 @@
-import { BREEDING_SOW_STATUSES } from "../breedingSows/breedingSowsRules";
+import { BREEDING_SOW_STATUSES, type BreedingSowStatus } from "../breedingSows/breedingSowsRules";
 
 export const PREGNANCY_RESULTS = {
   pendiente: "Pendiente",
@@ -10,6 +10,9 @@ export const PREGNANCY_RESULTS = {
 
 export type PregnancyResult = (typeof PREGNANCY_RESULTS)[keyof typeof PREGNANCY_RESULTS];
 export type SowStatusKey = keyof typeof BREEDING_SOW_STATUSES;
+
+export const MINIMUM_POST_WEANING_INTERVAL_DAYS = 14;
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
  * Normalizes user-facing labels so rule evaluation stays case- and accent-insensitive.
@@ -24,7 +27,8 @@ const normalizeText = (value: string) =>
 /**
  * Checks whether the sow is still in the empty state required to register a mating event.
  */
-export const isEmptySowStatus = (statusName: string) => normalizeText(statusName) === normalizeText(BREEDING_SOW_STATUSES.vacia);
+export const isEmptySowStatus = (statusName: string) =>
+  normalizeText(statusName) === normalizeText(BREEDING_SOW_STATUSES.vacia);
 
 /**
  * Maps user input to the canonical pregnancy result values supported by the API.
@@ -44,6 +48,31 @@ export const parsePregnancyResult = (value: string): PregnancyResult | null => {
     default:
       return null;
   }
+};
+
+/**
+ * Restricts request-owned pregnancy values while keeping one canonical lifecycle value set.
+ * Cancellation and closure remain owned by retirement and farrowing workflows.
+ */
+export const canPregnancyResultBeProvidedByRequest = (result: PregnancyResult) =>
+  result !== PREGNANCY_RESULTS.cancelado && result !== PREGNANCY_RESULTS.cerrado;
+
+/** Prevents reproductive history from starting before the sow entered the farm. */
+export const isReproductionDateOnOrAfterEntryDate = (reproductionDate: Date, entryDate: Date) =>
+  reproductionDate.getTime() >= entryDate.getTime();
+
+/** Enforces the approved recovery interval between an actual weaning and a new mating. */
+export const hasMinimumPostWeaningInterval = (
+  reproductionDate: Date,
+  lastWeaningDate: Date | null,
+) => {
+  if (lastWeaningDate === null) {
+    return true;
+  }
+
+  const minimumReproductionTime =
+    lastWeaningDate.getTime() + MINIMUM_POST_WEANING_INTERVAL_DAYS * MILLISECONDS_PER_DAY;
+  return reproductionDate.getTime() >= minimumReproductionTime;
 };
 
 /**
@@ -75,17 +104,11 @@ export const getSowStatusTransition = (
   currentResult: PregnancyResult,
   nextResult: PregnancyResult,
 ): SowStatusKey | null => {
-  if (
-    currentResult === PREGNANCY_RESULTS.pendiente &&
-    nextResult === PREGNANCY_RESULTS.positivo
-  ) {
+  if (currentResult === PREGNANCY_RESULTS.pendiente && nextResult === PREGNANCY_RESULTS.positivo) {
     return "gestacion";
   }
 
-  if (
-    currentResult === PREGNANCY_RESULTS.positivo &&
-    nextResult === PREGNANCY_RESULTS.negativo
-  ) {
+  if (currentResult === PREGNANCY_RESULTS.positivo && nextResult === PREGNANCY_RESULTS.negativo) {
     return "vacia";
   }
 
@@ -118,7 +141,7 @@ export const getSowStatusAfterDeletingMatingEvent = (
  */
 export const getSowStatusForCreatedMatingEvent = (
   pregnancyResult: string | null,
-): string | null => {
+): BreedingSowStatus | null => {
   if (!pregnancyResult) {
     return null;
   }

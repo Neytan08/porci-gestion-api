@@ -12,6 +12,7 @@ export const BREED_ERROR_CODES = {
 
 type BreedErrorCode = (typeof BREED_ERROR_CODES)[keyof typeof BREED_ERROR_CODES];
 
+/** Builds a breed failure with a stable HTTP code and structured logging context. */
 const createBreedError = (
   statusCode: number,
   errorCode: BreedErrorCode,
@@ -26,6 +27,7 @@ const createBreedError = (
   });
 
 export const breedErrors = {
+  /** Reports structural validation failures in a create request. */
   invalidCreatePayload: (issues: ZodIssue[]) =>
     createBreedError(
       400,
@@ -35,6 +37,7 @@ export const breedErrors = {
       { issues },
     ),
 
+  /** Reports structural validation failures in a partial update request. */
   invalidUpdatePayload: (issues: ZodIssue[]) =>
     createBreedError(
       400,
@@ -44,6 +47,7 @@ export const breedErrors = {
       { issues },
     ),
 
+  /** Identifies an invalid route ID while preserving the attempted operation. */
   invalidBreedId: (rawValue: unknown, operation: "retrieve" | "update" | "delete") =>
     createBreedError(
       400,
@@ -53,6 +57,7 @@ export const breedErrors = {
       { breedId: rawValue },
     ),
 
+  /** Reports that the breed required by an operation does not exist. */
   breedNotFound: (breedId: number, operation: "retrieve" | "update" | "delete") =>
     createBreedError(
       404,
@@ -62,6 +67,7 @@ export const breedErrors = {
       { breedId },
     ),
 
+  /** Reports a name that conflicts with an existing breed. */
   breedNameAlreadyExists: (breedName: string) =>
     createBreedError(
       409,
@@ -71,12 +77,21 @@ export const breedErrors = {
       { breedName },
     ),
 
-  breedHasRelatedAnimals: (breedId: number, relatedBoarsCount: number, relatedSowsCount: number) =>
+  /** Reports a blocked deletion, including relationship counts only when measured. */
+  breedHasRelatedAnimals: (
+    breedId: number,
+    relatedBoarsCount?: number,
+    relatedSowsCount?: number,
+  ) =>
     createBreedError(
       409,
       BREED_ERROR_CODES.BREED_HAS_RELATED_ANIMALS,
       "The breed cannot be deleted because it has boars or breeding sows associated.",
       "Cannot delete breed",
-      { breedId, relatedBoarsCount, relatedSowsCount },
+      {
+        breedId,
+        ...(relatedBoarsCount === undefined ? {} : { relatedBoarsCount }),
+        ...(relatedSowsCount === undefined ? {} : { relatedSowsCount }),
+      },
     ),
 };

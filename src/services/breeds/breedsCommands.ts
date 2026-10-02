@@ -6,7 +6,15 @@ import {
   isPrismaUniqueConstraintError,
 } from "../../utils/prismaErrors";
 import { breedErrors } from "./breedErrors";
-import { countBreedRelatedAnimals, getBreedByNormalizedName } from "./breedsQueries";
+import {
+  countBreedRelatedAnimals,
+  deleteBreedById,
+  getBreedById,
+  getBreedByNormalizedName,
+  insertBreed,
+  updateBreedById,
+} from "./breedsQueries";
+import type { CreateBreedInput, UpdateBreedInput } from "./breedTypes";
 
 /**
  * Prevents duplicated breed names while allowing the current breed to keep its
@@ -27,12 +35,12 @@ const ensureBreedNameIsAvailable = async (
 /**
  * Creates a breed after enforcing name uniqueness.
  */
-export const createBreed = async (data: Prisma.breedCreateInput) => {
+export const createBreed = async (data: CreateBreedInput) => {
   try {
     return await prisma.$transaction(async (tx) => {
       await ensureBreedNameIsAvailable(tx, data.breed_name);
 
-      return await tx.breed.create({ data });
+      return await insertBreed(data, tx);
     });
   } catch (error) {
     if (isPrismaUniqueConstraintError(error)) {
@@ -46,31 +54,24 @@ export const createBreed = async (data: Prisma.breedCreateInput) => {
 /**
  * Updates a breed after confirming it exists and the requested name is available.
  */
-export const updateBreed = async (id: number, data: Prisma.breedUpdateInput) => {
+export const updateBreed = async (id: number, data: UpdateBreedInput) => {
   try {
     return await prisma.$transaction(async (tx) => {
-      const currentBreed = await tx.breed.findUnique({
-        where: { breed_id: id },
-        select: { breed_id: true },
-      });
+      const currentBreed = await getBreedById(id, tx);
 
       if (!currentBreed) {
         throw breedErrors.breedNotFound(id, "update");
       }
 
-      if (typeof data.breed_name === "string") {
+      if (data.breed_name !== undefined) {
         await ensureBreedNameIsAvailable(tx, data.breed_name, id);
       }
 
-      return await tx.breed.update({
-        where: { breed_id: id },
-        data,
-      });
+      return await updateBreedById(id, data, tx);
     });
   } catch (error) {
-    if (isPrismaUniqueConstraintError(error)) {
-      const breedName = typeof data.breed_name === "string" ? data.breed_name : "unknown";
-      throw breedErrors.breedNameAlreadyExists(breedName);
+    if (isPrismaUniqueConstraintError(error) && data.breed_name !== undefined) {
+      throw breedErrors.breedNameAlreadyExists(data.breed_name);
     }
 
     if (isPrismaRecordNotFoundError(error)) {
@@ -97,9 +98,7 @@ export const deleteBreed = async (id: number) => {
         );
       }
 
-      return await tx.breed.delete({
-        where: { breed_id: id },
-      });
+      return await deleteBreedById(id, tx);
     });
   } catch (error) {
     if (isPrismaRecordNotFoundError(error)) {
@@ -107,7 +106,7 @@ export const deleteBreed = async (id: number) => {
     }
 
     if (isPrismaForeignKeyConstraintError(error)) {
-      throw breedErrors.breedHasRelatedAnimals(id, 1, 1);
+      throw breedErrors.breedHasRelatedAnimals(id);
     }
 
     throw error;

@@ -1,0 +1,175 @@
+# PorciGestion API Architecture
+
+## Purpose
+This document defines the target backend architecture and responsibility boundaries for PorciGestion API. Existing code may contain legacy deviations; do not turn a scoped task into a broad cleanup solely to make old code conform.
+
+## Request Flow
+Typical request flow:
+
+`Route -> asyncHandler -> Controller -> Service -> Query or Command -> Rules / Queries / Errors -> Prisma`
+
+Errors propagate through the centralized error middleware.
+
+Simple read operations may flow from Service directly to Queries. Multi-step business operations should flow through Commands.
+
+## Routes
+Routes define HTTP endpoints and keep Swagger/OpenAPI documentation close to the endpoint definition.
+
+Routes should:
+- register the HTTP method and path;
+- bind the correct controller method;
+- wrap asynchronous handlers with the established `asyncHandler` pattern;
+- document the HTTP contract with Swagger.
+
+Do not place domain or persistence logic in routes.
+
+## Middleware and Error Flow
+`asyncHandler` forwards rejected async handlers to Express error middleware instead of requiring repetitive controller-level `try/catch`.
+
+The global error handler is responsible for centralized error logging and consistent HTTP error responses, including known `ApiError` instances and recognized persistence/validation failures.
+
+Local `try/catch` should be used only when code can meaningfully recover from, enrich, translate, or otherwise handle an error.
+
+## Controllers
+Controllers handle HTTP concerns and should remain easy to trace.
+
+Controllers may:
+- parse route/query parameters;
+- validate request bodies with the appropriate request schema;
+- throw entity-specific request errors;
+- call the entity Service;
+- log significant successful operations;
+- build the HTTP response.
+
+Controllers must not contain domain workflows or direct Prisma access.
+
+## Services
+Services are the public facade for entity operations.
+
+Prefer thin pass-through methods that delegate:
+- simple reads to Queries;
+- business workflows and writes to Commands.
+
+Do not place business rules or persistence logic in Services. Existing light response shaping may remain when it is part of a stable public contract, but new domain decisions should not be introduced here.
+
+## Commands
+Commands orchestrate business workflows.
+
+They may coordinate:
+- entity and cross-entity Queries;
+- Rules;
+- entity-specific Errors;
+- transactions;
+- state transitions and multi-step operations.
+
+Commands decide how an operation is performed, but new persistence access should be delegated to Queries.
+
+When a workflow spans multiple related writes, evaluate whether the operation must be atomic and use a transaction when it provides the clearest consistency guarantee.
+
+## Queries
+Queries are the persistence boundary for an entity.
+
+All new Prisma access should be implemented in the appropriate Queries module, including:
+- reads;
+- creates;
+- updates;
+- deletes;
+- existence checks;
+- aggregate or relationship lookups.
+
+Query functions that participate in transactions should accept the required Prisma transaction client rather than forcing Commands to duplicate persistence logic.
+
+Some existing Commands still perform Prisma writes directly. Treat those as legacy deviations. When touched, move the affected persistence logic into Queries only when the refactor is safe, scoped, and clearly improves the implementation.
+
+## Rules
+Rules are the source of truth for reusable domain constraints and decisions.
+
+Rules should:
+- express whether an operation or transition is allowed;
+- calculate or select resulting domain states when appropriate;
+- centralize finite domain values and reusable domain decisions when they belong to that module;
+- remain deterministic.
+
+Rules must not:
+- access Prisma;
+- persist data;
+- perform the main operation;
+- introduce unrelated side effects.
+
+Not every entity requires a Rules module.
+
+## Errors
+Use entity-specific error modules for known request, entity, and domain failures.
+
+Prefer stable error codes and meaningful `ApiError` instances over generic `Error` objects when the failure belongs to a known operation.
+
+Entity errors may define client-facing messages plus structured logging context. Reuse existing errors before introducing equivalent new ones.
+
+## Validation
+Use Zod for request-level structural validation:
+- payload shape;
+- required fields;
+- types;
+- basic formats and structural constraints.
+
+Do not use Zod as the source of truth for business rules.
+
+Domain eligibility, relationship constraints, state transitions, and operation permissions belong in Rules and/or Commands.
+
+## Persistence and Database Changes
+The application uses Prisma for persistence, but database structure is controlled separately by the developer.
+
+Do not change the database schema, data model, migration state, or perform destructive database operations without explicit developer approval.
+
+Before proposing a database change, explain the required change, why it is needed, affected behavior, risks, and relevant alternatives.
+
+## Concurrency and Transactional Consistency
+Write operations must preserve domain invariants when multiple requests can modify the same mutable state concurrently.
+
+Pay particular attention to read → validate → write workflows, because the state used for a decision may change before the final write.
+
+Use the simplest mechanism that correctly protects the invariant:
+
+- database constraints;
+- conditional writes;
+- transactions;
+- optimistic concurrency;
+- row locks when a multi-step workflow requires stable mutable state.
+
+Do not introduce row locks by default.
+
+When a multi-step workflow depends on multiple pieces of mutable state, protect all state that participates in the invariant using the simplest appropriate concurrency mechanism. Explicit row locks are required only for records that must remain stable while the decision is evaluated and persisted.
+
+When explicit row locks are used, acquire them in a consistent deterministic order and revalidate mutable state after the locks are acquired.
+
+If an expected state or affected-row count no longer matches when the write occurs, treat the operation as a domain conflict rather than continuing from stale data.
+
+## Logging
+Use structured logging with request-level context provided through AsyncLocalStorage.
+
+The request tracing middleware must run before other middleware and routes. It creates or accepts the request ID, returns it through X-Request-ID, and records request start, completion, duration, status, and premature closure.
+
+The logger automatically adds the request ID, HTTP method, and path to logs created during the request. Do not pass request IDs or Express request objects through controllers, services, or domain layers.
+
+Controllers should not normally log. Services own significant successful business-operation logs after the operation completes. Routine reads should rely on the request completion log unless additional debug context is genuinely useful.
+
+Centralized error handling owns failure logging. Lower layers should preserve diagnostic details through ApiError.logContext instead of logging before throwing. Handled failures use warn; unexpected server failures use error.
+
+A failed request produces both a diagnostic request.failed log and a final request.completed log with its status and duration.
+
+Avoid sensitive information, complete payloads or records, noisy step-by-step events, and duplicate logs.
+
+## Swagger
+Keep Swagger/OpenAPI synchronized with the implemented HTTP contract.
+
+Review documentation whenever changing:
+- route or HTTP method;
+- parameters or query values;
+- request body;
+- response shape;
+- status codes;
+- API error behavior.
+
+Swagger should remain useful for both API documentation and manual testing.
+
+Document each response with its HTTP status code and a short description explaining what it means. Do not add response body schemas, response examples, or detailed error-code lists unless explicitly requested. Keep request parameters and request body schemas documented for manual testing.

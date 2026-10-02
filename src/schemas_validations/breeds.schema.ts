@@ -1,8 +1,14 @@
 import { z } from "zod";
 
-// Breed schema validation using Zod
+const BREED_NAME_MAX_LENGTH = 100;
+
+// Validate the supplied display name without changing its casing or spacing.
 export const breedSchema = z.object({
-  breed_name: z.string().min(1),
+  breed_name: z
+    .string()
+    .min(1)
+    .max(BREED_NAME_MAX_LENGTH)
+    .regex(/\S/, "The breed name must contain a non-whitespace character."),
   description: z.string().optional(),
 });
 

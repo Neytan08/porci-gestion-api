@@ -1,24 +1,43 @@
-import type { Prisma } from "@prisma/client";
 import prisma from "../../prismaClient";
-import { isPrismaRecordNotFoundError } from "../../utils/prismaErrors";
+import {
+  applyFarrowingToBreedingSow,
+  applyWeaningToBreedingSow,
+  getActiveBreedingSowWithStatusForUpdate,
+  getBreedingSowStateForUpdate,
+  restoreBreedingSowAfterFarrowingDeletion,
+} from "../breedingSows/breedingSowsQueries";
 import { BREEDING_SOW_STATUSES } from "../breedingSows/breedingSowsRules";
-import { getBlockingMatingEventBySowId, getSowByIdWithStatus } from "../matingEvents/matingEventsQueries";
+import {
+  getBlockingMatingEventBySowIdForUpdate,
+  getMatingEventForDeletion,
+  restoreMatingEventAfterFarrowingDeletion,
+  updateMatingEventPregnancyResult,
+} from "../matingEvents/matingEventsQueries";
 import { PREGNANCY_RESULTS } from "../matingEvents/pregnancyRules";
 import { farrowingErrors } from "./farrowingErrors";
-
-export type CreateFarrowingInput = Omit<
-  Prisma.farrowingsUncheckedCreateInput,
-  "mating_id" | "weaning_date" | "live_births" | "weaned_piglets"
->;
+import {
+  deleteFarrowingById,
+  getFarrowingWorkflowStateForUpdate,
+  getFarrowingWorkflowTarget,
+  getLatestPreviousWeaningDate,
+  insertFarrowing,
+  updateFarrowingWeaning,
+} from "./farrowingsQueries";
+import {
+  isFarrowingCompletionDateValid,
+  isFarrowingDateAfterReproductionDate,
+} from "./farrowingsRules";
+import type { CreateFarrowingInput, WeanFarrowingInput } from "./farrowingsTypes";
 
 /**
  * A farrowing can only close a pregnancy that was confirmed as positive. Once
  * the record is created, that mating event is closed and the sow enters the
- * lactation stage in the same transaction.
+ * lactation stage in the same transaction. The command locks the sow before
+ * the mating event to match every reproductive write workflow.
  */
 export const createFarrowing = async (data: CreateFarrowingInput) => {
   return await prisma.$transaction(async (tx) => {
-    const sow = await getSowByIdWithStatus(data.sow_id, tx);
+    const sow = await getActiveBreedingSowWithStatusForUpdate(data.sow_id, tx);
 
     if (!sow) {
       throw farrowingErrors.sowNotFound(data.sow_id);
@@ -28,34 +47,38 @@ export const createFarrowing = async (data: CreateFarrowingInput) => {
       throw farrowingErrors.sowNotGestating(data.sow_id, sow.status);
     }
 
-    const matingEvent = await getBlockingMatingEventBySowId(data.sow_id, tx);
+    const matingEvent = await getBlockingMatingEventBySowIdForUpdate(data.sow_id, tx);
 
     if (!matingEvent || matingEvent.pregnancy_result !== PREGNANCY_RESULTS.positivo) {
       throw farrowingErrors.positiveMatingEventNotFound(data.sow_id);
     }
 
-    const farrowing = await tx.farrowings.create({
-      data: {
-        ...data,
-        mating_id: matingEvent.mating_id,
-      },
-    });
+    if (
+      !isFarrowingDateAfterReproductionDate(
+        data.farrowing_date,
+        matingEvent.reproduction_date,
+      )
+    ) {
+      throw farrowingErrors.farrowingDateBeforeReproduction(
+        data.sow_id,
+        matingEvent.mating_id,
+        matingEvent.reproduction_date,
+        data.farrowing_date,
+      );
+    }
 
-    await tx.matingevents.update({
-      where: { mating_id: matingEvent.mating_id },
-      data: { pregnancy_result: PREGNANCY_RESULTS.cerrado },
-    });
+    const farrowing = await insertFarrowing(
+      { ...data, mating_id: matingEvent.mating_id },
+      tx,
+    );
 
-    const updatedSow = await tx.breedingsows.updateMany({
-      where: {
-        sow_id: data.sow_id,
-        status: BREEDING_SOW_STATUSES.gestacion,
-      },
-      data: {
-        farrowing_number: { increment: 1 },
-        status: BREEDING_SOW_STATUSES.lactancia,
-      },
-    });
+    await updateMatingEventPregnancyResult(
+      matingEvent.mating_id,
+      PREGNANCY_RESULTS.cerrado,
+      tx,
+    );
+
+    const updatedSow = await applyFarrowingToBreedingSow(data.sow_id, tx);
 
     if (updatedSow.count !== 1) {
       throw farrowingErrors.sowStatusUpdateFailed(data.sow_id);
@@ -66,37 +89,124 @@ export const createFarrowing = async (data: CreateFarrowingInput) => {
 };
 
 /**
- * Updates direct farrowing fields. When the farrowing date changes, the weaning
- * date is recalculated because it is derived business data, not client input.
+ * Records actual weaning and moves the sow from lactation to empty atomically.
  */
-export const updateFarrowing = async (id: number, data: Prisma.farrowingsUncheckedUpdateInput) => {
-  try {
-    return await prisma.farrowings.update({
-      where: { farrowing_id: id },
-      data: data,
-    });
-  } catch (error) {
-    if (isPrismaRecordNotFoundError(error)) {
-      throw farrowingErrors.farrowingNotFound(id, "update");
+export const weanFarrowing = async (id: number, data: WeanFarrowingInput) => {
+  const target = await getFarrowingWorkflowTarget(id);
+
+  if (!target) {
+    throw farrowingErrors.farrowingNotFound(id, "wean");
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    const sow = await getBreedingSowStateForUpdate(target.sow_id, tx);
+
+    if (!sow) {
+      throw farrowingErrors.farrowingStateChanged(id, "wean");
     }
 
-    throw error;
-  }
+    const farrowing = await getFarrowingWorkflowStateForUpdate(id, tx);
+
+    if (!farrowing) {
+      throw farrowingErrors.farrowingNotFound(id, "wean");
+    }
+
+    if (farrowing.sow_id !== target.sow_id || farrowing.mating_id !== target.mating_id) {
+      throw farrowingErrors.farrowingStateChanged(id, "wean");
+    }
+
+    if (sow.status === BREEDING_SOW_STATUSES.retirada) {
+      throw farrowingErrors.sowNotLactating(farrowing.sow_id, sow.status);
+    }
+
+    if (farrowing.weaned_date !== null) {
+      throw farrowingErrors.alreadyWeaned(id);
+    }
+
+    if (sow.status !== BREEDING_SOW_STATUSES.lactancia) {
+      throw farrowingErrors.sowNotLactating(farrowing.sow_id, sow.status);
+    }
+
+    if (!isFarrowingCompletionDateValid(data.weaned_date, farrowing.farrowing_date)) {
+      throw farrowingErrors.invalidWeanDate(id);
+    }
+
+    const updatedFarrowing = await updateFarrowingWeaning(
+      id,
+      farrowing.sow_id,
+      farrowing.farrowing_date,
+      data.weaned_date,
+      data.weaned_piglets,
+      tx,
+    );
+
+    await applyWeaningToBreedingSow(farrowing.sow_id, data.weaned_date, tx);
+
+    return updatedFarrowing;
+  });
 };
 
 /**
- * Removes a farrowing record by id. Status restoration is intentionally not
- * inferred here because the current business rules only define creation effects.
+ * Deletes an unweaned farrowing and restores its mating event and sow lifecycle.
  */
 export const deleteFarrowing = async (id: number) => {
-  try {
-    return await prisma.farrowings.delete({
-      where: { farrowing_id: id },
-    });
-  } catch (error) {
-    if (isPrismaRecordNotFoundError(error)) {
+  const target = await getFarrowingWorkflowTarget(id);
+
+  if (!target) {
+    throw farrowingErrors.farrowingNotFound(id, "delete");
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    const sow = await getBreedingSowStateForUpdate(target.sow_id, tx);
+
+    if (!sow) {
+      throw farrowingErrors.farrowingStateChanged(id, "delete");
+    }
+
+    const matingEvent = await getMatingEventForDeletion(target.mating_id, tx);
+    const farrowing = await getFarrowingWorkflowStateForUpdate(id, tx);
+
+    if (!farrowing) {
       throw farrowingErrors.farrowingNotFound(id, "delete");
     }
-    throw error;
-  }
+
+    if (
+      !matingEvent ||
+      farrowing.sow_id !== target.sow_id ||
+      farrowing.mating_id !== target.mating_id ||
+      matingEvent.sow_id !== target.sow_id
+    ) {
+      throw farrowingErrors.farrowingStateChanged(id, "delete");
+    }
+
+    if (farrowing.weaned_date !== null) {
+      throw farrowingErrors.completedFarrowingCannotBeDeleted(id);
+    }
+
+    if (
+      sow.status !== BREEDING_SOW_STATUSES.lactancia ||
+      matingEvent.pregnancy_result !== PREGNANCY_RESULTS.cerrado
+    ) {
+      throw farrowingErrors.farrowingStateChanged(id, "delete");
+    }
+
+    const lastWeaningDate = await getLatestPreviousWeaningDate(farrowing.sow_id, id, tx);
+    const deletedFarrowing = await deleteFarrowingById(id, tx);
+    const restoredMatingEvent = await restoreMatingEventAfterFarrowingDeletion(
+      farrowing.mating_id,
+      farrowing.sow_id,
+      tx,
+    );
+    const restoredSow = await restoreBreedingSowAfterFarrowingDeletion(
+      farrowing.sow_id,
+      lastWeaningDate,
+      tx,
+    );
+
+    if (restoredMatingEvent.count !== 1 || restoredSow.count !== 1) {
+      throw farrowingErrors.farrowingStateChanged(id, "delete");
+    }
+
+    return deletedFarrowing;
+  });
 };

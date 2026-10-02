@@ -1,10 +1,13 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import prisma from "../../prismaClient";
-import { PREGNANCY_RESULTS } from "./pregnancyRules";
+import { activeBreedingSowWhere } from "../breedingSows/breedingSowsQueries";
+import type { CreateMatingEventInput } from "./matingEventsTypes";
+import { PREGNANCY_RESULTS, type PregnancyResult } from "./pregnancyRules";
 
-type MatingEventsQueryClient = Pick<
+type MatingEventsQueryClient = Pick<Prisma.TransactionClient, "matingevents">;
+type MatingEventsLockClient = Pick<
   Prisma.TransactionClient,
-  "breedingsows" | "matingevents"
+  "matingevents" | "$queryRaw"
 >;
 
 export type PregnancyUpdateEvent = {
@@ -13,27 +16,15 @@ export type PregnancyUpdateEvent = {
   pregnancy_result: string | null;
 };
 
+type LockedFarrowingMatingEvent = PregnancyUpdateEvent & {
+  reproduction_date: Date;
+};
+
 /**
  * Returns the full mating-event collection without applying business rules.
  */
 export const getAllMatingEvents = async () => {
   return await prisma.matingevents.findMany();
-};
-
-/**
- * Loads the sow and its current status so write flows can validate reproductive state safely.
- */
-export const getSowByIdWithStatus = async (
-  sowId: number,
-  queryClient: MatingEventsQueryClient = prisma,
-) => {
-  return await queryClient.breedingsows.findUnique({
-    where: { sow_id: sowId },
-    select: {
-      sow_id: true,
-      status: true,
-    },
-  });
 };
 
 /**
@@ -116,9 +107,18 @@ export const getPregnancyUpdateEvents = async (
 /**
  * Groups mating events by their stored pregnancy result for reporting purposes.
  */
-// TODO: I need to modify this function to include just the events with pregnancy_result = positivo, pendiente, and negativo. The other values are not relevant for the report.
 export const getMatingEventsGroupedByPregnancyResult = async () => {
   const events = await prisma.matingevents.findMany({
+    where: {
+      breedingsows: activeBreedingSowWhere,
+      pregnancy_result: {
+        in: [
+          PREGNANCY_RESULTS.pendiente,
+          PREGNANCY_RESULTS.positivo,
+          PREGNANCY_RESULTS.negativo,
+        ],
+      },
+    },
     orderBy: { pregnancy_result: "asc" },
     include: {
       breedingsows: { select: { sow_tag_number: true } },
@@ -138,4 +138,164 @@ export const getMatingEventsGroupedByPregnancyResult = async () => {
     pregnancy_result,
     events: groupedEvents,
   }));
+};
+
+/** Counts the reproductive events that prevent hard deletion of a sow. */
+export const countMatingEventsBySowId = async (
+  sowId: number,
+  queryClient: MatingEventsQueryClient = prisma,
+) => {
+  return await queryClient.matingevents.count({ where: { sow_id: sowId } });
+};
+
+/** Cancels pending or positive mating events when their sows are retired. */
+export const cancelActiveMatingEventsBySowIds = async (
+  sowIds: number[],
+  queryClient: MatingEventsQueryClient,
+) => {
+  return await queryClient.matingevents.updateMany({
+    where: {
+      sow_id: { in: sowIds },
+      pregnancy_result: { in: [PREGNANCY_RESULTS.pendiente, PREGNANCY_RESULTS.positivo] },
+    },
+    data: { pregnancy_result: PREGNANCY_RESULTS.cancelado },
+  });
+};
+
+/** Locks a pregnancy-update batch in deterministic identifier order. */
+export const getPregnancyUpdateEventsForUpdate = async (
+  matingIds: number[],
+  queryClient: MatingEventsLockClient,
+): Promise<PregnancyUpdateEvent[]> => {
+  if (matingIds.length === 0) {
+    return [];
+  }
+
+  const orderedMatingIds = [...matingIds].sort((left, right) => left - right);
+
+  return await queryClient.$queryRaw<PregnancyUpdateEvent[]>(Prisma.sql`
+    SELECT mating_id, sow_id, pregnancy_result
+    FROM matingevents
+    WHERE mating_id IN (${Prisma.join(orderedMatingIds)})
+    ORDER BY mating_id
+    FOR UPDATE
+  `);
+};
+
+/**
+ * Locks the latest active mating event after its sow has been locked by the caller.
+ * Reproductive commands use the shared sow-then-event lock order to avoid deadlocks.
+ */
+export const getBlockingMatingEventBySowIdForUpdate = async (
+  sowId: number,
+  queryClient: MatingEventsLockClient,
+) => {
+  const events = await queryClient.$queryRaw<LockedFarrowingMatingEvent[]>(Prisma.sql`
+    SELECT mating_id, sow_id, pregnancy_result, reproduction_date
+    FROM matingevents
+    WHERE sow_id = ${sowId}
+      AND pregnancy_result IN (${PREGNANCY_RESULTS.pendiente}, ${PREGNANCY_RESULTS.positivo})
+    ORDER BY mating_id DESC
+    LIMIT 1
+    FOR UPDATE
+  `);
+
+  return events[0] ?? null;
+};
+
+/** Inserts a mating event inside the transaction that owns its sow transition. */
+export const insertMatingEvent = async (
+  data: CreateMatingEventInput,
+  queryClient: MatingEventsQueryClient,
+) => {
+  return await queryClient.matingevents.create({ data });
+};
+
+/** Loads the sow relationship before acquiring the shared sow-then-event deletion locks. */
+export const getMatingEventDeletionTarget = async (
+  id: number,
+) => {
+  return await prisma.matingevents.findUnique({
+    where: { mating_id: id },
+    select: { mating_id: true, sow_id: true },
+  });
+};
+
+/** Locks one mating event after its sow row has been locked by the delete command. */
+export const getMatingEventForDeletion = async (
+  id: number,
+  queryClient: MatingEventsLockClient,
+) => {
+  const events = await queryClient.$queryRaw<PregnancyUpdateEvent[]>(Prisma.sql`
+    SELECT mating_id, sow_id, pregnancy_result
+    FROM matingevents
+    WHERE mating_id = ${id}
+    FOR UPDATE
+  `);
+
+  return events[0] ?? null;
+};
+
+/** Counts farrowing history while the parent event is locked against new references. */
+export const countMatingEventFarrowings = async (
+  id: number,
+  queryClient: MatingEventsQueryClient,
+) => {
+  const event = await queryClient.matingevents.findUnique({
+    where: { mating_id: id },
+    select: { _count: { select: { farrowings: true } } },
+  });
+
+  return event?._count.farrowings ?? 0;
+};
+
+/** Deletes one mating event and returns the state needed to restore its sow. */
+export const deleteMatingEventById = async (
+  id: number,
+  queryClient: MatingEventsQueryClient,
+) => {
+  return await queryClient.matingevents.delete({
+    where: { mating_id: id },
+    select: { mating_id: true, sow_id: true, pregnancy_result: true },
+  });
+};
+
+/** Applies one pregnancy result to a validated event batch. */
+export const updateMatingEventPregnancyResults = async (
+  matingIds: number[],
+  pregnancyResult: PregnancyResult,
+  queryClient: MatingEventsQueryClient,
+) => {
+  return await queryClient.matingevents.updateMany({
+    where: { mating_id: { in: matingIds } },
+    data: { pregnancy_result: pregnancyResult },
+  });
+};
+
+/** Updates one mating event pregnancy result during a related workflow. */
+export const updateMatingEventPregnancyResult = async (
+  matingId: number,
+  pregnancyResult: PregnancyResult,
+  queryClient: MatingEventsQueryClient,
+) => {
+  return await queryClient.matingevents.update({
+    where: { mating_id: matingId },
+    data: { pregnancy_result: pregnancyResult },
+  });
+};
+
+/** Restores the closed mating event when its unweaned farrowing is deleted. */
+export const restoreMatingEventAfterFarrowingDeletion = async (
+  matingId: number,
+  sowId: number,
+  queryClient: MatingEventsQueryClient,
+) => {
+  return await queryClient.matingevents.updateMany({
+    where: {
+      mating_id: matingId,
+      sow_id: sowId,
+      pregnancy_result: PREGNANCY_RESULTS.cerrado,
+    },
+    data: { pregnancy_result: PREGNANCY_RESULTS.positivo },
+  });
 };

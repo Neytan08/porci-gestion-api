@@ -1,8 +1,11 @@
 import type { Prisma } from "@prisma/client";
 import prisma from "../../prismaClient";
-import { normalizeBreedName } from "./breedRules";
+import type { CreateBreedInput, UpdateBreedInput } from "./breedTypes";
 
-type BreedsQueryClient = Pick<Prisma.TransactionClient, "breed" | "boars" | "breedingsows">;
+type BreedsQueryClient = Pick<
+  Prisma.TransactionClient,
+  "breed" | "boars" | "breedingsows" | "$queryRaw"
+>;
 
 export type BreedRelatedAnimalsCount = {
   boars: number;
@@ -19,31 +22,53 @@ export const getAllBreeds = async () => {
 /**
  * Retrieves one breed by its identifier.
  */
-export const getBreedById = async (id: number) => {
-  return await prisma.breed.findUnique({
+export const getBreedById = async (id: number, queryClient: BreedsQueryClient = prisma) => {
+  return await queryClient.breed.findUnique({
     where: { breed_id: id },
   });
 };
 
+/** Persists only the scalar fields owned by a breed inside the supplied transaction. */
+export const insertBreed = async (data: CreateBreedInput, queryClient: BreedsQueryClient) => {
+  return await queryClient.breed.create({
+    data: { breed_name: data.breed_name, description: data.description },
+  });
+};
+
+/** Updates supplied breed fields without exposing nested animal mutations. */
+export const updateBreedById = async (
+  id: number,
+  data: UpdateBreedInput,
+  queryClient: BreedsQueryClient,
+) => {
+  return await queryClient.breed.update({
+    where: { breed_id: id },
+    data: { breed_name: data.breed_name, description: data.description },
+  });
+};
+
+/** Deletes a breed after its command has checked relationship constraints. */
+export const deleteBreedById = async (id: number, queryClient: BreedsQueryClient) => {
+  return await queryClient.breed.delete({ where: { breed_id: id } });
+};
+
 /**
- * Finds a breed by normalized name to keep create and update uniqueness checks
- * consistent with user-facing values.
+ * Finds a name using the expression required by the manually managed unique index,
+ * ignoring casing and all whitespace while preserving the stored display name.
  */
 export const getBreedByNormalizedName = async (
   breedName: string,
   queryClient: BreedsQueryClient = prisma,
 ) => {
-  const normalizedBreedName = normalizeBreedName(breedName);
-  const breeds = await queryClient.breed.findMany({
-    select: {
-      breed_id: true,
-      breed_name: true,
-    },
-  });
+  const breeds = await queryClient.$queryRaw<Array<{ breed_id: number; breed_name: string }>>`
+    SELECT breed_id, breed_name
+    FROM breed
+    WHERE lower(regexp_replace(breed_name, '[[:space:]]+', '', 'g')) =
+      lower(regexp_replace(${breedName}, '[[:space:]]+', '', 'g'))
+    LIMIT 1
+  `;
 
-  return (
-    breeds.find((breed) => normalizeBreedName(breed.breed_name) === normalizedBreedName) ?? null
-  );
+  return breeds[0] ?? null;
 };
 
 /**

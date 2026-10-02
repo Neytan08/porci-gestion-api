@@ -12,11 +12,19 @@ export const BREEDING_SOW_ERROR_CODES = {
   BREEDING_SOW_BREED_NOT_FOUND: "BREEDING_SOW_BREED_NOT_FOUND",
   BREEDING_SOW_STATUS_INVALID: "BREEDING_SOW_STATUS_INVALID",
   BREEDING_SOW_STATUS_CHANGE_BODY_INVALID: "BREEDING_SOW_STATUS_CHANGE_BODY_INVALID",
-  BREEDING_SOW_STATUS_CHANGE_BLOCKED_ACTIVE_MATING_EVENT: "BREEDING_SOW_STATUS_CHANGE_BLOCKED_ACTIVE_MATING_EVENT",
-  BREEDING_SOW_STATUS_CHANGE_BLOCKED_ACTIVE_FARROWING: "BREEDING_SOW_STATUS_CHANGE_BLOCKED_ACTIVE_FARROWING",
+  BREEDING_SOW_STATUS_CHANGE_BLOCKED_ACTIVE_MATING_EVENT:
+    "BREEDING_SOW_STATUS_CHANGE_BLOCKED_ACTIVE_MATING_EVENT",
+  BREEDING_SOW_STATUS_CHANGE_BLOCKED_ACTIVE_FARROWING:
+    "BREEDING_SOW_STATUS_CHANGE_BLOCKED_ACTIVE_FARROWING",
   BREEDING_SOW_REMOVAL_DATE_BEFORE_ENTRY_DATE: "BREEDING_SOW_REMOVAL_DATE_BEFORE_ENTRY_DATE",
-  BREEDING_SOW_LAST_WEANING_DATE_BEFORE_ENTRY_DATE: "BREEDING_SOW_LAST_WEANING_DATE_BEFORE_ENTRY_DATE",
+  BREEDING_SOW_REMOVAL_DATE_BEFORE_FARROWING_DATE:
+    "BREEDING_SOW_REMOVAL_DATE_BEFORE_FARROWING_DATE",
+  BREEDING_SOW_LAST_WEANING_DATE_BEFORE_ENTRY_DATE:
+    "BREEDING_SOW_LAST_WEANING_DATE_BEFORE_ENTRY_DATE",
   BREEDING_SOW_HAS_MATING_EVENTS: "BREEDING_SOW_HAS_MATING_EVENTS",
+  BREEDING_SOW_ALREADY_RETIRED: "BREEDING_SOW_ALREADY_RETIRED",
+  BREEDING_SOW_RETIREMENT_STATE_CHANGED: "BREEDING_SOW_RETIREMENT_STATE_CHANGED",
+  BREEDING_SOW_FARROWING_CLOSURE_STATE_CHANGED: "BREEDING_SOW_FARROWING_CLOSURE_STATE_CHANGED",
 } as const;
 
 type BreedingSowErrorCode =
@@ -67,7 +75,7 @@ export const breedingSowErrors = {
     createBreedingSowError(
       400,
       BREEDING_SOW_ERROR_CODES.BREEDING_SOW_STATUS_CHANGE_BODY_INVALID,
-      "The request body must contain a valid breeding sow status.",
+      "The request body status must be Vacia or No Productiva.",
       "Cannot validate breeding sow status change",
       { issues },
     ),
@@ -111,10 +119,7 @@ export const breedingSowErrors = {
       { status },
     ),
 
-  breedingSowNotFound: (
-    sowId: number,
-    operation: "retrieve" | "update" | "delete" | "retire",
-  ) =>
+  breedingSowNotFound: (sowId: number, operation: "retrieve" | "update" | "delete" | "retire") =>
     createBreedingSowError(
       404,
       BREEDING_SOW_ERROR_CODES.BREEDING_SOW_NOT_FOUND,
@@ -130,6 +135,38 @@ export const breedingSowErrors = {
       "One or more breeding sows were not found.",
       "Cannot retire breeding sows",
       { sowIds, missingSowIds },
+    ),
+
+  breedingSowsAlreadyRetired: (sowIds: number[], retiredSowIds: number[]) =>
+    createBreedingSowError(
+      409,
+      BREEDING_SOW_ERROR_CODES.BREEDING_SOW_ALREADY_RETIRED,
+      "One or more breeding sows have already been retired.",
+      "Cannot retire breeding sows more than once",
+      { sowIds, retiredSowIds },
+    ),
+
+  retirementStateChanged: (sowIds: number[], updatedCount: number) =>
+    createBreedingSowError(
+      409,
+      BREEDING_SOW_ERROR_CODES.BREEDING_SOW_RETIREMENT_STATE_CHANGED,
+      "The breeding sow retirement state changed before the operation could finish.",
+      "Cannot complete breeding sow retirement batch",
+      { sowIds, updatedCount },
+    ),
+
+  /** The locked active-farrowing set was not fully closed during retirement. */
+  farrowingClosureStateChanged: (
+    sowIds: number[],
+    expectedFarrowingCount: number,
+    updatedFarrowingCount: number,
+  ) =>
+    createBreedingSowError(
+      409,
+      BREEDING_SOW_ERROR_CODES.BREEDING_SOW_FARROWING_CLOSURE_STATE_CHANGED,
+      "The active farrowing state changed before retirement could close every record.",
+      "Cannot close every active farrowing during breeding sow retirement",
+      { sowIds, expectedFarrowingCount, updatedFarrowingCount },
     ),
 
   breedNotFound: (breedId: number) =>
@@ -157,6 +194,21 @@ export const breedingSowErrors = {
       "The removal date cannot be before the entry date.",
       "Cannot save breeding sow",
       { entryDate, removalDate },
+    ),
+
+  /** Retirement closure cannot be recorded before the active farrowing began. */
+  removalDateBeforeFarrowingDate: (
+    sowId: number,
+    farrowingId: number,
+    farrowingDate: Date,
+    removalDate: Date,
+  ) =>
+    createBreedingSowError(
+      400,
+      BREEDING_SOW_ERROR_CODES.BREEDING_SOW_REMOVAL_DATE_BEFORE_FARROWING_DATE,
+      "The removal date cannot be before an active farrowing date.",
+      "Cannot close active farrowing during breeding sow retirement",
+      { sowId, farrowingId, farrowingDate, removalDate },
     ),
 
   lastWeaningDateBeforeEntryDate: (entryDate: unknown, lastWeaningDate: unknown) =>
@@ -198,7 +250,7 @@ export const breedingSowErrors = {
     createBreedingSowError(
       409,
       BREEDING_SOW_ERROR_CODES.BREEDING_SOW_STATUS_CHANGE_BLOCKED_ACTIVE_FARROWING,
-      "The breeding sow status cannot be changed manually because there is an active farrowing without weaned piglets. Finish the farrowing/weaning workflow first.",
+      "The breeding sow status cannot be changed manually because there is a farrowing with no recorded weaning date. Finish the farrowing/weaning workflow first.",
       "Cannot update breeding sow status during active farrowing",
       { sowId, currentStatus, newStatus },
     ),

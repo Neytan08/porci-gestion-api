@@ -3,16 +3,16 @@ import { breedingSowRetireSchema, breedingSowSchema, breedingSowStatusChangeVali
 import { breedingSowErrors } from "../services/breedingSows/breedingSowErrors";
 import { parseBreedingSowStatus } from "../services/breedingSows/breedingSowsRules";
 import BreedingSowsService from "../services/breedingSows/breedingSowsService";
-import logger from "../utils/logger";
 import { parsePositiveIdOrThrow, parsePositiveIdsOrThrow, parseRequiredStringParamOrThrow } from "../utils/requestParsing";
 
 class BreedingSowsController {
+  /** Returns the active breeding-sow collection. */
   async getAll(_: Request, res: Response) {
     const sows = await BreedingSowsService.getAll();
-    logger.info("Fetched breeding sows", { count: sows.length });
-    res.json(sows);
+    return res.json(sows);
   }
 
+  /** Returns one active breeding sow identified by its route parameter. */
   async getById(req: Request, res: Response) {
     const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
       breedingSowErrors.invalidBreedingSowId(rawValue, "retrieve"),
@@ -23,10 +23,10 @@ class BreedingSowsController {
       throw breedingSowErrors.breedingSowNotFound(id, "retrieve");
     }
 
-    logger.info("Fetched breeding sow", { sowId: id });
     return res.json(sow);
   }
 
+  /** Reports whether a normalized sow tag is already registered. */
   async checkSowTagNumberExists(req: Request, res: Response) {
     const sowTagNumber = parseRequiredStringParamOrThrow(
       req.params.sowTagNumber,
@@ -34,10 +34,10 @@ class BreedingSowsController {
     );
     const exists = await BreedingSowsService.checkSowTagNumberExists(sowTagNumber);
 
-    logger.info("Checked breeding sow tag number", { sowTagNumber, exists });
     return res.json(exists);
   }
 
+  /** Validates and registers a breeding sow. */
   async create(req: Request, res: Response) {
     const parseResult = breedingSowSchema.safeParse(req.body);
 
@@ -46,15 +46,10 @@ class BreedingSowsController {
     }
 
     const newSow = await BreedingSowsService.create(parseResult.data);
-    logger.info("Created breeding sow", {
-      sowId: newSow.sow_id,
-      sowTagNumber: newSow.sow_tag_number,
-      breedId: newSow.breed_id,
-      status: newSow.status,
-    });
-    res.status(201).json(newSow);
+    return res.status(201).json(newSow);
   }
 
+  /** Validates whether a proposed manual status change is currently allowed. */
   async validateStatusChange(req: Request, res: Response) {
     const parseResult = breedingSowStatusChangeValidationSchema.safeParse(req.body);
 
@@ -66,14 +61,10 @@ class BreedingSowsController {
       breedingSowErrors.invalidBreedingSowId(rawValue, "retrieve"),
     );
     await BreedingSowsService.validateStatusChange(id, parseResult.data.status);
-
-    logger.info("Validated breeding sow status change", {
-      sowId: id,
-      status: parseResult.data.status,
-    });
-    res.status(204).send();
+    return res.status(204).send();
   }
 
+  /** Validates and updates editable fields on an active breeding sow. */
   async update(req: Request, res: Response) {
     const parseResult = breedingSowUpdateSchema.safeParse(req.body);
 
@@ -85,28 +76,19 @@ class BreedingSowsController {
       breedingSowErrors.invalidBreedingSowId(rawValue, "update"),
     );
     const updatedSow = await BreedingSowsService.update(id, parseResult.data);
-    logger.info("Updated breeding sow", {
-      sowId: updatedSow.sow_id,
-      sowTagNumber: updatedSow.sow_tag_number,
-      breedId: updatedSow.breed_id,
-      status: updatedSow.status,
-    });
-    res.json(updatedSow);
+    return res.json(updatedSow);
   }
 
+  /** Permanently deletes an eligible active breeding sow. */
   async delete(req: Request, res: Response) {
     const id = parsePositiveIdOrThrow(req.params.id, (rawValue) =>
       breedingSowErrors.invalidBreedingSowId(rawValue, "delete"),
     );
-    const deleted = await BreedingSowsService.delete(id);
-
-    logger.info("Deleted breeding sow", {
-      sowId: deleted.sow_id,
-      sowTagNumber: deleted.sow_tag_number,
-    });
-    res.status(204).send();
+    await BreedingSowsService.delete(id);
+    return res.status(204).send();
   }
 
+  /** Retires one or more active sows and closes their open reproductive workflows. */
   async retire(req: Request, res: Response) {
     const parseResult = breedingSowRetireSchema.safeParse(req.body ?? {});
 
@@ -122,14 +104,10 @@ class BreedingSowsController {
 
     const result = await BreedingSowsService.retire(sowIds, retireData);
 
-    logger.info("Retired breeding sows", {
-      sowIds,
-      retiredCount: result.count,
-      removalDate: retireData.removal_date ?? null,
-    });
-    res.json(result);
+    return res.json(result);
   }
 
+  /** Returns active breeding sows matching the requested canonical status. */
   async getAllByStatus(req: Request, res: Response) {
     const rawStatus = parseRequiredStringParamOrThrow(
       req.params.status,
@@ -143,16 +121,8 @@ class BreedingSowsController {
 
     const sows = await BreedingSowsService.getAllBreedingSowsByStatus(status);
 
-    logger.info("Fetched breeding sows by status", { status, count: sows.length });
-    res.json(sows);
+    return res.json(sows);
   }
-
-  // async countFarrowingsBySow(req: Request, res: Response) {
-  //   const sowId = Number(req.params.sowId);
-  //   const count = await BreedingSowsService.countFarrowingsBySow(sowId);
-  //   logger.info(`Sow id ${sowId} has ${count} farrowings`);
-  //   res.json({ sowId, farrowingCount: count });
-  // }
 }
 
 export default new BreedingSowsController();
