@@ -24,6 +24,7 @@ This structure keeps domain decisions outside controllers and database access is
 - Farrowing and weaning
 - Sow status transitions
 - Farm reference data
+- Vaccines and vaccine type v2.0
 
 ## Engineering Highlights
 
