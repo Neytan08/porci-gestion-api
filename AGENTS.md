@@ -3,6 +3,7 @@
 ## Documentation Map
 - `dev-docs/architecture.md` is the source of truth for layers, responsibilities, request/error flow, persistence boundaries, and transactions.
 - `dev-docs/coding-philosophy.md` is the source of truth for code quality, abstraction, naming, control flow, documentation, TypeScript practices, and refactoring.
+- `dev-docs/testing-strategy.md` is the source of truth for automated test structure, isolation, test data, mocking, coverage expectations, and execution.
 
 Read the relevant document before making architectural, implementation-style, or refactoring decisions. Keep `AGENTS.md` focused on rules that must remain visible across tasks.
 
@@ -13,14 +14,15 @@ Read the relevant document before making architectural, implementation-style, or
 - Do not hardcode reusable domain values or finite domain states. Search for existing shared constants first and derive types from them when appropriate.
 - Keep Swagger/OpenAPI synchronized whenever the HTTP contract changes.
 - Existing code may contain legacy deviations from the documented target architecture. Improve them when touched only when the change is safe, scoped, and beneficial. Do not perform repository-wide cleanup unless requested.
-- The repository currently has no established automated test suite. Do not claim tests passed when none exist or introduce a testing framework without approval.
+- Any implementation change that introduces, modifies, or fixes testable behavior must include the corresponding new or updated tests following `dev-docs/testing-strategy.md`.
+- When existing behavior lacks coverage, derive meaningful tests from documented business rules and the current implementation rather than from a predefined scenario list.
 
 ## Verification
 Before completing a task:
 1. Review the final diff and confirm the requested behavior.
 2. Check for unrelated changes and architecture violations.
 3. Review affected dependencies and Swagger when applicable.
-4. Run relevant existing linting, compilation, build, or validation commands when available.
+4. Run relevant tests and existing linting, compilation, build, or validation commands when available.
 5. Remove unintended debug code, temporary logs, commented-out code, or incomplete implementation.
 6. Clearly identify unresolved issues or required manual verification.
 
