@@ -1,4 +1,5 @@
 import { BREEDING_SOW_STATUSES, type BreedingSowStatus } from "../breedingSows/breedingSowsRules";
+import { REPRODUCTION_TYPES, type ReproductionType } from "./matingEventsTypes";
 
 export const PREGNANCY_RESULTS = {
   pendiente: "Pendiente",
@@ -11,7 +12,7 @@ export const PREGNANCY_RESULTS = {
 export type PregnancyResult = (typeof PREGNANCY_RESULTS)[keyof typeof PREGNANCY_RESULTS];
 export type SowStatusKey = keyof typeof BREEDING_SOW_STATUSES;
 
-export const MINIMUM_POST_WEANING_INTERVAL_DAYS = 14;
+export const MINIMUM_POST_WEANING_INTERVAL_DAYS = 5;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
@@ -56,6 +57,10 @@ export const parsePregnancyResult = (value: string): PregnancyResult | null => {
  */
 export const canPregnancyResultBeProvidedByRequest = (result: PregnancyResult) =>
   result !== PREGNANCY_RESULTS.cancelado && result !== PREGNANCY_RESULTS.cerrado;
+
+/** Natural mating requires a registered boar; artificial insemination does not use one. */
+export const isBoarRequiredForReproductionType = (reproductionType: ReproductionType) =>
+  reproductionType === REPRODUCTION_TYPES.naturalMating;
 
 /** Prevents reproductive history from starting before the sow entered the farm. */
 export const isReproductionDateOnOrAfterEntryDate = (reproductionDate: Date, entryDate: Date) =>

@@ -42,16 +42,8 @@ router.get("/", asyncHandler(matingEventsController.getAll.bind(matingEventsCont
  *         description: Mating event found
  *       400:
  *         description: Invalid mating event id
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiErrorResponse'
  *       404:
  *         description: Mating event not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiErrorResponse'
  */
 router.get("/:id", asyncHandler(matingEventsController.getById.bind(matingEventsController)));
 
@@ -60,7 +52,7 @@ router.get("/:id", asyncHandler(matingEventsController.getById.bind(matingEvents
  * /matingevents:
  *   post:
  *     summary: Create a new mating event
- *     description: Starts a reproductive workflow for an empty sow. The reproduction date cannot precede entry and must be at least 14 days after the last actual weaning. Positivo moves the sow to gestation; Pendiente and Negativo leave it empty.
+ *     description: Starts a reproductive workflow for an empty sow. The reproduction date cannot precede entry and must be at least 5 days after the last actual weaning. Positivo moves the sow to gestation; Pendiente and Negativo leave it empty.
  *     tags: [MatingEvents]
  *     requestBody:
  *       required: true
@@ -77,6 +69,7 @@ router.get("/:id", asyncHandler(matingEventsController.getById.bind(matingEvents
  *               boar_id:
  *                 type: integer
  *                 minimum: 1
+ *                 description: Required for Monta Natural and must reference an active boar. Must be omitted for Inseminación Artificial.
  *                 example: 1
  *               reproduction_date:
  *                 type: string
@@ -85,7 +78,7 @@ router.get("/:id", asyncHandler(matingEventsController.getById.bind(matingEvents
  *               reproduction_type:
  *                 type: string
  *                 enum: [Monta Natural, Inseminación Artificial]
- *                 example: "Inseminación Artificial"
+ *                 example: "Monta Natural"
  *               pregnancy_result:
  *                 type: string
  *                 enum: [Pendiente, Positivo, Negativo]
@@ -93,27 +86,43 @@ router.get("/:id", asyncHandler(matingEventsController.getById.bind(matingEvents
  *               notes:
  *                 type: string
  *                 example: "First reproduction attempt of the season"
+ *             oneOf:
+ *               - required: [boar_id]
+ *                 properties:
+ *                   reproduction_type:
+ *                     type: string
+ *                     enum: [Monta Natural]
+ *               - properties:
+ *                   reproduction_type:
+ *                     type: string
+ *                     enum: [Inseminación Artificial]
+ *                 not:
+ *                   required: [boar_id]
+ *           examples:
+ *             naturalMating:
+ *               summary: Natural mating with an active boar
+ *               value:
+ *                 sow_id: 5
+ *                 boar_id: 1
+ *                 reproduction_date: "2025-10-05"
+ *                 reproduction_type: "Monta Natural"
+ *                 pregnancy_result: "Pendiente"
+ *             artificialInsemination:
+ *               summary: Artificial insemination without a boar
+ *               value:
+ *                 sow_id: 5
+ *                 reproduction_date: "2025-10-05"
+ *                 reproduction_type: "Inseminación Artificial"
+ *                 pregnancy_result: "Pendiente"
  *     responses:
  *       201:
  *         description: Mating event created successfully
  *       400:
- *         description: Validation error or invalid reproductive chronology
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiErrorResponse'
+ *         description: Validation error, invalid reproductive chronology, or boar selection inconsistent with the reproduction type
  *       404:
  *         description: Selected sow or boar not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiErrorResponse'
  *       409:
  *         description: The sow is not eligible or the selected boar is retired
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiErrorResponse'
  */
 router.post("/", asyncHandler(matingEventsController.create.bind(matingEventsController)));
 
@@ -136,22 +145,10 @@ router.post("/", asyncHandler(matingEventsController.create.bind(matingEventsCon
  *         description: Mating event deleted successfully
  *       400:
  *         description: Invalid mating event id
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiErrorResponse'
  *       404:
  *         description: Mating event not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiErrorResponse'
  *       409:
  *         description: Mating event is referenced by farrowing history and cannot be deleted
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiErrorResponse'
  */
 router.delete("/:id", asyncHandler(matingEventsController.delete.bind(matingEventsController)));
 
@@ -174,10 +171,6 @@ router.delete("/:id", asyncHandler(matingEventsController.delete.bind(matingEven
  *         description: List of mating events for the sow. Returns an empty array when no records exist.
  *       400:
  *         description: Invalid sow id
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiErrorResponse'
  */
 router.get(
   "/sow/:sowId",
@@ -203,10 +196,6 @@ router.get(
  *         description: List of mating events for the boar. Returns an empty array when no records exist.
  *       400:
  *         description: Invalid boar id
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiErrorResponse'
  */
 router.get(
   "/boar/:boarId",
@@ -261,22 +250,10 @@ router.get(
  *         description: Pregnancy result updated successfully
  *       400:
  *         description: Invalid payload
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiErrorResponse'
  *       404:
  *         description: One or more mating events were not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiErrorResponse'
  *       409:
  *         description: Business rule conflict while updating the pregnancy result
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiErrorResponse'
  */
 router.put(
   "/update/pregnancy-result",

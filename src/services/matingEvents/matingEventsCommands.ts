@@ -34,6 +34,7 @@ import {
   getSowStatusForCreatedMatingEvent,
   getSowStatusTransition,
   hasMinimumPostWeaningInterval,
+  isBoarRequiredForReproductionType,
   isEmptySowStatus,
   isReproductionDateOnOrAfterEntryDate,
   isSupportedPregnancyResultTransition,
@@ -250,6 +251,15 @@ const ensureReproductionDateIsValid = (
 export const createMatingEvent = async (data: CreateMatingEventInput) => {
   if (!canPregnancyResultBeProvidedByRequest(data.pregnancy_result)) {
     throw matingEventErrors.invalidPregnancyResult(data.pregnancy_result, "create");
+  }
+
+  const requiresBoar = isBoarRequiredForReproductionType(data.reproduction_type);
+  if (requiresBoar && data.boar_id == null) {
+    throw matingEventErrors.boarRequiredForNaturalMating();
+  }
+
+  if (!requiresBoar && data.boar_id != null) {
+    throw matingEventErrors.boarNotAllowedForArtificialInsemination(data.boar_id);
   }
 
   return await prisma.$transaction(async (tx) => {
