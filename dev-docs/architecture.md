@@ -116,6 +116,8 @@ Do not use Zod as the source of truth for business rules.
 
 Domain eligibility, relationship constraints, state transitions, and operation permissions belong in Rules and/or Commands.
 
+Update requests must include at least one writable field accepted by the endpoint; empty or unsupported payloads are invalid.
+
 ## Persistence and Database Changes
 The application uses Prisma for persistence, but database structure is controlled separately by the developer.
 

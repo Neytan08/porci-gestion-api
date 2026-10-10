@@ -74,7 +74,7 @@ As a farm user, I want to retire a boar while preserving its existing informatio
 **Requirement**\
 A boar without reproductive history can be permanently deleted.
 
-Once a boar has been associated with a mating event, it must not be permanently deleted. It can instead be retired when it leaves active production so that its previous mating events remain part of the farm's reproductive history.
+A boar with recorded mating-event history must not be permanently deleted. If all mating events associated with the boar are eligible for deletion and are removed, the boar may be permanently deleted because no reproductive history remains associated with it.
 
 Retiring a boar does not remove or cancel mating events that were recorded while the boar was active.
 

@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Tests and source files share this project, so compilation starts at the repository root.
+    "rootDir": ".",
+    // Test type-checking validates code only; Vitest executes the tests.
+    "noEmit": true,
+    // Vitest uses modern ESM-compatible module handling rather than the production Node build mode.
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    // Provide Node globals such as process and node: built-in modules, plus Vitest test globals.
+    "types": ["node", "vitest/globals"]
+  },
+  // Type-check the application, all tests, and the Vitest configuration together.
+  "include": ["src/**/*.ts", "tests/**/*.ts", "vitest.config.mts"],
+  "exclude": ["node_modules", "dist"]
+}

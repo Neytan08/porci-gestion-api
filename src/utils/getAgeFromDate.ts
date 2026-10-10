@@ -6,10 +6,10 @@
 export function calculateAge(birthDate: Date): { years: number; months: number } {
   const today = new Date();
   const completedMonths =
-    (today.getFullYear() - birthDate.getUTCFullYear()) * 12 +
-    today.getMonth() -
+    (today.getUTCFullYear() - birthDate.getUTCFullYear()) * 12 +
+    today.getUTCMonth() -
     birthDate.getUTCMonth() -
-    (today.getDate() < birthDate.getUTCDate() ? 1 : 0);
+    (today.getUTCDate() < birthDate.getUTCDate() ? 1 : 0);
 
   return {
     years: Math.floor(completedMonths / 12),

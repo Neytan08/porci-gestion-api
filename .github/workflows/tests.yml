@@ -1,0 +1,30 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      integration:
+        description: Run integration tests against the initialized dedicated test database
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run generate
+      - run: npm run check
+      - run: npm run test:unit
+      - run: npm run build
+
