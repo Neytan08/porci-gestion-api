@@ -1,4 +1,4 @@
-name: Tests
+name: Unit Tests and Integration Tests
 
 on:
   push:
@@ -17,6 +17,21 @@ jobs:
   unit:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install Dependencies
+        run: npm ci
+      - name: Generate Prisma Client
+        run: npm run generate
+      - name: Type Check Application
+        run: npm run typecheck
+      - name: Type Check Tests
+        run: npm run typecheck:tests
+      - name: Lint Code
+    steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -24,7 +39,3 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run generate
-      - run: npm run check
-      - run: npm run test:unit
-      - run: npm run build
-
