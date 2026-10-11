@@ -31,6 +31,11 @@ jobs:
       - name: Type Check Tests
         run: npm run typecheck:tests
       - name: Lint Code
+        run: npm run lint
+      - name: Run Unit Tests
+        run: npm run test:unit
+      - name: Build API
+        run: npm run build
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
