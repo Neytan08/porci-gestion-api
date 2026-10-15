@@ -13,6 +13,20 @@ export default defineConfig({
           env: { NODE_ENV: "test", LOG_FILES_ENABLED: "false", TZ: "UTC" },
         },
       },
+      {
+        test: {
+          name: "integration",
+          environment: "node",
+          include: ["tests/integration/**/*.test.ts"],
+          globalSetup: ["tests/helpers/integrationGlobalSetup.ts"],
+          setupFiles: ["tests/helpers/integrationSetup.ts"],
+          fileParallelism: false,
+          maxWorkers: 1,
+          testTimeout: 20_000,
+          hookTimeout: 20_000,
+          restoreMocks: true,
+        },
+      },
     ],
   },
 });
