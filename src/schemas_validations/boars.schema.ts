@@ -15,7 +15,6 @@ const dateInputSchema = z.string().transform((value, context) => {
   return date;
 });
 
-// Ignore response-only fields when a client sends a loaded boar back for editing.
 export const boarsSchema = z.object({
   boar_tag_number: z
     .string()
@@ -30,7 +29,12 @@ export const boarsSchema = z.object({
   description: z.string().nullable().optional(),
 });
 
-export const boarsUpdateSchema = boarsSchema.partial();
+export const boarsUpdateSchema = boarsSchema
+.partial()
+.strict()
+.refine((data) => Object.keys(data).length > 0, {
+    message: "At least one field must be provided for update",
+  });
 
 export const boarsRetireSchema = z.strictObject({
   boar_ids: z.union([databaseIdSchema, z.array(databaseIdSchema).nonempty()]),
