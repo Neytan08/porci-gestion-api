@@ -4,6 +4,7 @@
 - `dev-docs/architecture.md` is the source of truth for layers, responsibilities, request/error flow, persistence boundaries, and transactions.
 - `dev-docs/coding-philosophy.md` is the source of truth for code quality, abstraction, naming, control flow, documentation, TypeScript practices, and refactoring.
 - `dev-docs/testing-strategy.md` is the source of truth for automated test structure, isolation, test data, mocking, coverage expectations, and execution.
+- `dev-docs/business-requirements.md` documents the functional and business requirements gathered for PorciGestión and the expected domain behavior.
 
 Read the relevant document before making architectural, implementation-style, or refactoring decisions. Keep `AGENTS.md` focused on rules that must remain visible across tasks.
 
@@ -16,6 +17,7 @@ Read the relevant document before making architectural, implementation-style, or
 - Existing code may contain legacy deviations from the documented target architecture. Improve them when touched only when the change is safe, scoped, and beneficial. Do not perform repository-wide cleanup unless requested.
 - Any implementation change that introduces, modifies, or fixes testable behavior must include the corresponding new or updated tests following `dev-docs/testing-strategy.md`.
 - When existing behavior lacks coverage, derive meaningful tests from documented business rules and the current implementation rather than from a predefined scenario list.
+- When a change affects documented business behavior, review `dev-docs/business-requirements.md` and keep the implementation, relevant tests, and documented requirement aligned. If the requested behavior conflicts with an existing requirement, flag the discrepancy instead of silently changing either one.
 
 ## Verification
 Before completing a task:

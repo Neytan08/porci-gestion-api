@@ -1,5 +1,6 @@
 import type { ZodIssue } from "zod";
 import ApiError, { type ApiErrorLogContext } from "../../utils/apiError";
+import { REPRODUCTION_TYPES } from "./matingEventsTypes";
 
 export const MATING_EVENT_ERROR_CODES = {
   MATING_EVENT_BODY_INVALID: "MATING_EVENT_BODY_INVALID",
@@ -7,6 +8,8 @@ export const MATING_EVENT_ERROR_CODES = {
   MATING_EVENT_ID_INVALID: "MATING_EVENT_ID_INVALID",
   SOW_ID_INVALID: "SOW_ID_INVALID",
   BOAR_ID_INVALID: "BOAR_ID_INVALID",
+  BOAR_REQUIRED_FOR_NATURAL_MATING: "BOAR_REQUIRED_FOR_NATURAL_MATING",
+  BOAR_NOT_ALLOWED_FOR_ARTIFICIAL_INSEMINATION: "BOAR_NOT_ALLOWED_FOR_ARTIFICIAL_INSEMINATION",
   BOAR_RETIRED: "BOAR_RETIRED",
   BOAR_NOT_FOUND: "BOAR_NOT_FOUND",
   MATING_EVENT_NOT_FOUND: "MATING_EVENT_NOT_FOUND",
@@ -86,6 +89,24 @@ export const matingEventErrors = {
       "The boar id must be a positive integer.",
       "Cannot fetch mating events by boar",
       { boarId: rawValue },
+    ),
+
+  boarRequiredForNaturalMating: () =>
+    createMatingEventError(
+      400,
+      MATING_EVENT_ERROR_CODES.BOAR_REQUIRED_FOR_NATURAL_MATING,
+      `A boar_id is required for ${REPRODUCTION_TYPES.naturalMating}.`,
+      "Cannot create natural mating event without a boar",
+      { reproductionType: REPRODUCTION_TYPES.naturalMating },
+    ),
+
+  boarNotAllowedForArtificialInsemination: (boarId: number) =>
+    createMatingEventError(
+      400,
+      MATING_EVENT_ERROR_CODES.BOAR_NOT_ALLOWED_FOR_ARTIFICIAL_INSEMINATION,
+      `A boar_id cannot be provided for ${REPRODUCTION_TYPES.artificialInsemination}.`,
+      "Cannot create artificial insemination event with a boar",
+      { reproductionType: REPRODUCTION_TYPES.artificialInsemination, boarId },
     ),
 
   boarRetired: (boarId: number) =>

@@ -7,6 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model breedingsows {
   sow_id            Int            @id @default(autoincrement())
   breed_id          Int
@@ -54,25 +55,7 @@ model matingevents {
   breedingsows      breedingsows @relation(fields: [sow_id], references: [sow_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_sow")
 }
 
-model vaccines {
-  vaccination_id       Int          @id @default(autoincrement())
-  sow_id               Int?
-  boar_id              Int?
-  vaccine_id           Int
-  administration_date  DateTime     @db.Date
-  dose                 String?      @db.VarChar(50)
-  administration_route String?      @db.VarChar(50)
-  administered_by      String?      @db.VarChar(100)
-  note                 String?
-  vaccinetypes         vaccinetypes @relation(fields: [vaccine_id], references: [vaccine_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_vaccine")
-}
-
-model vaccinetypes {
-  vaccine_id   Int        @id @default(autoincrement())
-  vaccine_name String     @db.VarChar(100)
-  vaccines     vaccines[]
-}
-
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model breed {
   breed_id     Int            @id(map: "breeds_pkey") @default(autoincrement())
   breed_name   String         @unique(map: "breeds_breed_name_key") @db.VarChar(100)

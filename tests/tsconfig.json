@@ -1,0 +1,5 @@
+{
+  // Editor-facing test project. VS Code discovers this nearest configuration for files in tests/.
+  // It inherits test-only compiler options, Node.js types, and Vitest globals from tsconfig.tests.json.
+  "extends": "../tsconfig.tests.json"
+}

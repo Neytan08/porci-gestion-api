@@ -39,10 +39,8 @@ router.get("/", asyncHandler(BoarsController.getAll.bind(BoarsController)));
  *     responses:
  *       200:
  *         description: Boolean result indicating whether a tag exists, ignoring case and whitespace
- *         content:
- *           application/json:
- *             schema:
- *               type: boolean
+ *       400:
+ *         description: Invalid or missing boar tag number
  */
 router.get(
   "/check-boar-tag-number-exists/:boarTagNumber",
@@ -65,6 +63,8 @@ router.get(
  *     responses:
  *       200:
  *         description: Boar with breed and age in years and completed months
+ *       400:
+ *         description: Invalid boar ID
  *       404:
  *         description: Boar not found
  */
@@ -139,10 +139,13 @@ router.post("/", asyncHandler(BoarsController.create.bind(BoarsController)));
  *         description: ID of the boar to update
  *     requestBody:
  *       required: true
+ *       description: Provide at least one writable profile field. Omitted fields remain unchanged. Unknown fields, response-only fields (boar_id, age, breeds), and retirement fields (removal_date, removal_reason) are rejected, even when writable fields are also supplied.
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             minProperties: 1
+ *             additionalProperties: false
  *             properties:
  *               boar_tag_number:
  *                 type: string
@@ -176,7 +179,7 @@ router.post("/", asyncHandler(BoarsController.create.bind(BoarsController)));
  *       200:
  *         description: Updated boar in an updatedBoar object
  *       400:
- *         description: Invalid request
+ *         description: Invalid boar ID or update payload, including empty objects and unsupported fields
  *       404:
  *         description: Boar or breed not found
  *       409:
@@ -245,6 +248,8 @@ router.patch("/retire", asyncHandler(BoarsController.retire.bind(BoarsController
  *     responses:
  *       204:
  *         description: Boar deleted successfully
+ *       400:
+ *         description: Invalid boar ID
  *       404:
  *         description: Boar not found
  *       409:
