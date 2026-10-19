@@ -3,7 +3,7 @@ import {
   isActiveBoar,
   isRemovalDateBeforeBirthDate,
   normalizeBoarTagNumber,
-} from "../../src/services/boars/boarsRules";
+} from "../../../src/services/boars/boarsRules";
 
 describe("boar rules", () => {
   it.each(["B 010", " b\t0\n10 "])("normalizes equivalent tag %j", (tag) => {

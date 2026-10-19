@@ -1,20 +1,20 @@
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import prisma from "../../src/prismaClient";
-import { BOAR_ERROR_CODES as codes } from "../../src/services/boars/boarErrors";
+import prisma from "../../../src/prismaClient";
+import { BOAR_ERROR_CODES as codes } from "../../../src/services/boars/boarErrors";
 import {
   createBoar,
   deleteBoar,
   retireBoar,
   updateBoar,
-} from "../../src/services/boars/boarsCommands";
-import * as queries from "../../src/services/boars/boarsQueries";
+} from "../../../src/services/boars/boarsCommands";
+import * as queries from "../../../src/services/boars/boarsQueries";
 
-vi.mock("../../src/prismaClient", () => ({ default: { $transaction: vi.fn() } }));
+vi.mock("../../../src/prismaClient", () => ({ default: { $transaction: vi.fn() } }));
 const { tagLookup } = vi.hoisted(() => ({
   tagLookup: vi.fn<() => Promise<{ boar_id: number; boar_tag_number: string } | null>>(),
 }));
-vi.mock("../../src/services/boars/boarsQueries", () => ({
+vi.mock("../../../src/services/boars/boarsQueries", () => ({
   getBoarBreedById: vi.fn(),
   getBoarByNormalizedTagNumber: tagLookup,
   getBoarStateById: vi.fn(),

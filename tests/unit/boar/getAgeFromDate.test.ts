@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { calculateAge } from "../../src/utils/getAgeFromDate";
+import { calculateAge } from "../../../src/utils/getAgeFromDate";
 
 afterEach(() => {
   vi.useRealTimers();
