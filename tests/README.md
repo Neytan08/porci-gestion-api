@@ -35,21 +35,26 @@ No application layers are mocked in integration tests.
 
 ## CI
 
-The `API Checks` workflow in `.github/workflows/tests.yml` has two jobs:
+The `API Checks` workflow in `.github/workflows/tests.yml` has three sequential jobs:
 
-- `unit` (displayed as **Fast Checks**): installs dependencies, generates Prisma Client,   checks application/test types, runs lint and unit tests, and builds the application.
-- `integration`: runs the integration suite after the fast checks succeed.
+- `quality` (**Quality Checks**): checks application/test types, runs lint, and builds the application, including OpenAPI generation.
+- `unit` (**Unit Tests**): runs isolated unit tests after quality checks succeed.
+- `integration` (**Integration Tests**): runs the integration suite after unit tests succeed, when the event enables integration testing.
 
-| Event | Fast checks | Integration tests |
-| --- | --- | --- |
-| Push to a branch other than `master` | Yes | No |
-| PR opened, reopened, or updated into `master` | Yes | Yes |
-| Push or merge into `master` | Yes | Yes |
-| Manual run | Yes | Selected option; enabled by default |
+If quality checks fail, both test jobs are skipped. If unit tests fail, integration tests are skipped.
+Each job checks out the code, configures Node.js 22 with npm caching, installs dependencies with `npm ci`, and generates Prisma Client.
+The npm cache reuses downloaded packages; installed dependencies are prepared separately in each job. No dependency artifacts are uploaded or downloaded.
+
+| Event | Quality checks | Unit tests | Integration tests |
+| --- | --- | --- | --- |
+| Push to a branch other than `master` | Yes | After quality checks pass | No |
+| PR opened, reopened, or updated into `master` | Yes | After quality checks pass | After unit tests pass |
+| Push or merge into `master` | Yes | After quality checks pass | After unit tests pass |
+| Manual run | Yes | After quality checks pass | After unit tests pass, if selected; enabled by default |
 
 There are no file filters: documentation changes follow the same rules as code changes.
 A push to a branch with an open PR into `master` triggers both push and PR workflows,
-so fast checks run twice; integration tests run only in the PR workflow. This duplication is accepted to keep the configuration simple. Tag pushes do not trigger the workflow.
+so quality checks and unit tests run in both workflows; integration tests run only in the PR workflow. This duplication is accepted to keep the configuration simple. Tag pushes do not trigger the workflow.
 
 ### Database connection
 
