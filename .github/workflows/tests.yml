@@ -1,20 +1,24 @@
-name: Unit Tests and Integration Tests
+name: API Checks
 
 on:
   push:
+    branches: ["**"]
   pull_request:
+    branches: [master]
   workflow_dispatch:
     inputs:
       integration:
         description: Run integration tests against the initialized dedicated test database
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: read
 
 jobs:
+  # Fast checks run for every branch push, PR into master, and manual run.
   unit:
+    name: Fast Checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -36,3 +40,38 @@ jobs:
         run: npm run test:unit
       - name: Build API
         run: npm run build
+
+  integration:
+    # PRs are already limited to master by the trigger above.
+    # Other branches run only fast checks unless integration is selected manually.
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/master') ||
+      (github.event_name == 'workflow_dispatch' && inputs.integration)
+    # Do not use the database if the fast checks fail.
+    needs: unit
+    runs-on: ubuntu-latest
+    concurrency:
+      # Every integration run uses the same database. Do not cancel an active cleanup/test run.
+      # GitHub may replace an older pending run with a newer one; this is not a FIFO queue.
+      group: dedicated-integration-database
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run generate
+      - name: Configure dedicated test connection
+        env:
+          TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          const url = process.env.TEST_DATABASE_URL;
+          if (!url || /[\r\n"\\]/.test(url)) throw new Error('Configure a valid TEST_DATABASE_URL secret.');
+          writeFileSync('.env.test', `DATABASE_URL="${url}"\n`, { mode: 0o600 });
+          NODE
+      - run: npm run test:integration
