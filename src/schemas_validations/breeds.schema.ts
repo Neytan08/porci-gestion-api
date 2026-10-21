@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const BREED_NAME_MAX_LENGTH = 100;
+const BREED_NAME_MAX_LENGTH = 50;
 
 // Validate the supplied display name without changing its casing or spacing.
 export const breedSchema = z.object({

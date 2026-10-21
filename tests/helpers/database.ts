@@ -38,7 +38,7 @@ export async function cleanDatabase(client: Pick<PrismaClient, "$transaction">) 
     await tx.matingevents.deleteMany();
     await tx.boars.deleteMany();
     await tx.breedingsows.deleteMany();
-    await tx.breed.deleteMany();
+    await tx.breeds.deleteMany();
   });
 }
 
@@ -55,7 +55,7 @@ export async function verifyTestDatabase(client: PrismaClient) {
   const tables = await client.$queryRaw<Array<{ tablename: string }>>`
     SELECT tablename::text FROM pg_tables WHERE schemaname = 'public'
   `;
-  for (const table of ["breed", "boars", "breedingsows", "matingevents", "farrowings"]) {
+  for (const table of ["breeds", "boars", "breedingsows", "matingevents", "farrowings"]) {
     if (!tables.some(({ tablename }) => tablename === table)) {
       throw new Error(`Initialize the test database first: missing table ${table}.`);
     }
@@ -69,7 +69,7 @@ export async function verifyTestDatabase(client: PrismaClient) {
       AND i.indpred IS NULL AND i.indexprs IS NOT NULL AND i.indnkeyatts = 1
   `;
   for (const [table, column] of [
-    ["breed", "breed_name"],
+    ["breeds", "breed_name"],
     ["boars", "boar_tag_number"],
     ["breedingsows", "sow_tag_number"],
   ]) {

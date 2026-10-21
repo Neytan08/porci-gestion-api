@@ -10,7 +10,7 @@ vi.mock("../../src/prismaClient", () => ({
     matingevents: { deleteMany: vi.fn() },
     boars: { deleteMany: vi.fn() },
     breedingsows: { deleteMany: vi.fn() },
-    breed: { deleteMany: vi.fn() },
+    breeds: { deleteMany: vi.fn() },
   },
 }));
 
@@ -19,7 +19,7 @@ const deletions = [
   prisma.matingevents.deleteMany,
   prisma.boars.deleteMany,
   prisma.breedingsows.deleteMany,
-  prisma.breed.deleteMany,
+  prisma.breeds.deleteMany,
 ];
 
 beforeEach(() => {
@@ -34,11 +34,11 @@ beforeEach(() => {
 });
 
 describe("test database preflight", () => {
-  const tables = ["breed", "boars", "breedingsows", "matingevents", "farrowings"].map(
+  const tables = ["breeds", "boars", "breedingsows", "matingevents", "farrowings"].map(
     (tablename) => ({ tablename }),
   );
   const indexes = [
-    ["breed", "breed_name"],
+    ["breeds", "breed_name"],
     ["boars", "boar_tag_number"],
     ["breedingsows", "sow_tag_number"],
   ].map(([table_name, column]) => ({

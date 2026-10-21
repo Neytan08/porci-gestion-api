@@ -4,7 +4,7 @@ import type { CreateBoarInput, RetireBoarInput, UpdateBoarInput } from "./boarsT
 
 type BoarsQueryClient = Pick<
   Prisma.TransactionClient,
-  "boars" | "breed" | "matingevents" | "$queryRaw"
+  "boars" | "breeds" | "matingevents" | "$queryRaw"
 >;
 
 /**
@@ -80,7 +80,7 @@ export const getBoarsForRetirement = async (ids: number[], queryClient: BoarsQue
  * Checks whether a breed exists before a boar references it.
  */
 export const getBoarBreedById = async (breedId: number, queryClient: BoarsQueryClient = prisma) => {
-  return await queryClient.breed.findUnique({
+  return await queryClient.breeds.findUnique({
     where: { breed_id: breedId },
     select: { breed_id: true },
   });

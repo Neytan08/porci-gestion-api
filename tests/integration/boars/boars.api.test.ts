@@ -157,12 +157,12 @@ describe("boar creation and profile updates", () => {
     const saved = await prisma.boars.findFirstOrThrow();
     expect(saved.boar_id).not.toBe(2147483647);
     expect(saved).toMatchObject({ removal_date: null, removal_reason: null });
-    expect(await prisma.breed.count()).toBe(1);
+    expect(await prisma.breeds.count()).toBe(1);
     expect(await prisma.matingevents.count()).toBe(0);
   });
   it("rejects nonexistent breed references for both create and update", async () => {
     const removed = await createBreed();
-    await prisma.breed.delete({ where: { breed_id: removed.breed_id } });
+    await prisma.breeds.delete({ where: { breed_id: removed.breed_id } });
     const boar = await createBoar();
     expectApiError(
       await api.post(base).send(boarPayload(removed.breed_id)),

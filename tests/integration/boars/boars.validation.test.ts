@@ -40,7 +40,7 @@ describe("boar profile validation", () => {
       delete payload[field];
       expectApiError(await api.post("/api/boars").send(payload), 400, codes.BOAR_BODY_INVALID);
       expect(await prisma.boars.count()).toBe(0);
-      await prisma.breed.deleteMany();
+      await prisma.breeds.deleteMany();
     }
   });
   it.each([

@@ -83,7 +83,7 @@ Retiring a boar does not remove or cancel mating events that were recorded while
 ### BR-BREED-001 --- Breed Registration
 
 **Requirement**\
-Each breed must have a unique name so that the same breed is not registered multiple times under equivalent names.
+Each breed must have a unique name so that the same breed is not registered multiple times under equivalent names. Breed names must contain between 1 and 50 characters, including any whitespace, and cannot consist only of whitespace.
 
 ### BR-BREED-002 --- Breed Usage
 

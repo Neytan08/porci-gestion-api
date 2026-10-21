@@ -10,7 +10,7 @@ it("cleans the complete application graph and can prepare new fixtures afterward
   await cleanDatabase(prisma);
   expect(
     await Promise.all([
-      prisma.breed.count(),
+      prisma.breeds.count(),
       prisma.boars.count(),
       prisma.breedingsows.count(),
       prisma.matingevents.count(),
