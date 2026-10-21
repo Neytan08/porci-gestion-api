@@ -17,7 +17,7 @@ describe("boar deletion and history", () => {
     expect(response.status).toBe(204);
     expect(response.text).toBe("");
     expect(await prisma.boars.findMany()).toEqual([survivor]);
-    expect(await prisma.breed.findUnique({ where: { breed_id: target.breed_id } })).not.toBeNull();
+    expect(await prisma.breeds.findUnique({ where: { breed_id: target.breed_id } })).not.toBeNull();
   });
   it("blocks deletion when mating history exists", async () => {
       const boar = await createBoar();

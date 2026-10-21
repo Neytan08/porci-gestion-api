@@ -4,7 +4,7 @@ import type { CreateBreedInput, UpdateBreedInput } from "./breedTypes";
 
 type BreedsQueryClient = Pick<
   Prisma.TransactionClient,
-  "breed" | "boars" | "breedingsows" | "$queryRaw"
+  "breeds" | "boars" | "breedingsows" | "$queryRaw"
 >;
 
 export type BreedRelatedAnimalsCount = {
@@ -16,21 +16,21 @@ export type BreedRelatedAnimalsCount = {
  * Returns the full breed collection.
  */
 export const getAllBreeds = async () => {
-  return await prisma.breed.findMany();
+  return await prisma.breeds.findMany();
 };
 
 /**
  * Retrieves one breed by its identifier.
  */
 export const getBreedById = async (id: number, queryClient: BreedsQueryClient = prisma) => {
-  return await queryClient.breed.findUnique({
+  return await queryClient.breeds.findUnique({
     where: { breed_id: id },
   });
 };
 
 /** Persists only the scalar fields owned by a breed inside the supplied transaction. */
 export const insertBreed = async (data: CreateBreedInput, queryClient: BreedsQueryClient) => {
-  return await queryClient.breed.create({
+  return await queryClient.breeds.create({
     data: { breed_name: data.breed_name, description: data.description },
   });
 };
@@ -41,7 +41,7 @@ export const updateBreedById = async (
   data: UpdateBreedInput,
   queryClient: BreedsQueryClient,
 ) => {
-  return await queryClient.breed.update({
+  return await queryClient.breeds.update({
     where: { breed_id: id },
     data: { breed_name: data.breed_name, description: data.description },
   });
@@ -49,7 +49,7 @@ export const updateBreedById = async (
 
 /** Deletes a breed after its command has checked relationship constraints. */
 export const deleteBreedById = async (id: number, queryClient: BreedsQueryClient) => {
-  return await queryClient.breed.delete({ where: { breed_id: id } });
+  return await queryClient.breeds.delete({ where: { breed_id: id } });
 };
 
 /**
@@ -62,7 +62,7 @@ export const getBreedByNormalizedName = async (
 ) => {
   const breeds = await queryClient.$queryRaw<Array<{ breed_id: number; breed_name: string }>>`
     SELECT breed_id, breed_name
-    FROM breed
+    FROM breeds
     WHERE lower(regexp_replace(breed_name, '[[:space:]]+', '', 'g')) =
       lower(regexp_replace(${breedName}, '[[:space:]]+', '', 'g'))
     LIMIT 1

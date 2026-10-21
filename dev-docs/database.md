@@ -28,7 +28,7 @@ Prisma schema and the additional indexes below have been verified.
 The API compares breed names and animal tags without casing or whitespace. PostgreSQL must enforce
 the same normalization through unique expression indexes for:
 
-- `breed.breed_name`;
+- `breeds.breed_name`;
 - `boars.boar_tag_number`;
 - `breedingsows.sow_tag_number`.
 
@@ -45,7 +45,7 @@ definitions in each environment before enabling writes:
 SELECT tablename, indexname, indexdef
 FROM pg_indexes
 WHERE schemaname = 'public'
-  AND tablename IN ('breed', 'boars', 'breedingsows')
+  AND tablename IN ('breeds', 'boars', 'breedingsows')
 ORDER BY tablename, indexname;
 ```
 

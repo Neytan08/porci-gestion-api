@@ -64,7 +64,7 @@ router.get("/:id", asyncHandler(BreedController.getById.bind(BreedController)));
  *               breed_name:
  *                 type: string
  *                 minLength: 1
- *                 maxLength: 100
+ *                 maxLength: 50
  *                 pattern: '\S'
  *                 example: Duroc
  *               description:
@@ -105,7 +105,7 @@ router.post("/", asyncHandler(BreedController.create.bind(BreedController)));
  *               breed_name:
  *                 type: string
  *                 minLength: 1
- *                 maxLength: 100
+ *                 maxLength: 50
  *                 pattern: '\S'
  *                 example: Large White
  *               description:

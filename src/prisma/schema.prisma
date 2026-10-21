@@ -22,7 +22,7 @@ model breedingsows {
   removal_reason    String?
   description       String?
   status            String?        @db.VarChar(50)
-  breed             breed          @relation(fields: [breed_id], references: [breed_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_breed")
+  breeds            breeds         @relation(fields: [breed_id], references: [breed_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_breed")
   farrowings        farrowings[]
   matingevents      matingevents[]
 }
@@ -38,7 +38,7 @@ model boars {
   removal_date    DateTime?      @db.Date
   removal_reason  String?
   description     String?
-  breeds          breed          @relation(fields: [breed_id], references: [breed_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_breed")
+  breeds          breeds         @relation(fields: [breed_id], references: [breed_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_breed")
   matingevents    matingevents[]
 }
 
@@ -53,15 +53,6 @@ model matingevents {
   farrowings        farrowings[]
   boars             boars?       @relation(fields: [boar_id], references: [boar_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_boar")
   breedingsows      breedingsows @relation(fields: [sow_id], references: [sow_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_sow")
-}
-
-/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
-model breed {
-  breed_id     Int            @id(map: "breeds_pkey") @default(autoincrement())
-  breed_name   String         @unique(map: "breeds_breed_name_key") @db.VarChar(100)
-  description  String?
-  boars        boars[]
-  breedingsows breedingsows[]
 }
 
 model farrowings {
@@ -80,4 +71,13 @@ model farrowings {
   weaned_date    DateTime?    @db.Timestamp(6)
   matingevents   matingevents @relation(fields: [mating_id], references: [mating_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mating_event")
   breedingsows   breedingsows @relation(fields: [sow_id], references: [sow_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_sow")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model breeds {
+  breed_id     Int            @id @default(autoincrement())
+  breed_name   String         @unique @db.VarChar(50)
+  description  String?
+  boars        boars[]
+  breedingsows breedingsows[]
 }

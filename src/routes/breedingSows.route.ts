@@ -19,7 +19,7 @@ const router = Router();
  *     tags: [BreedingSows]
  *     responses:
  *       200:
- *         description: List of active breeding sows with their breed data
+ *         description: List of active breeding sows with breed data in the breeds field
  */
 router.get("/", asyncHandler(BreedingSowController.getAll.bind(BreedingSowController)));
 
@@ -62,7 +62,7 @@ router.get(
  *         description: ID of the breeding sow
  *     responses:
  *       200:
- *         description: Active breeding sow found
+ *         description: Active breeding sow with breed data in the breeds field
  *       400:
  *         description: Invalid breeding sow ID
  *       404:
@@ -338,7 +338,7 @@ router.delete("/:id", asyncHandler(BreedingSowController.delete.bind(BreedingSow
  *         description: Status value to filter breeding sows
  *     responses:
  *       200:
- *         description: List of active breeding sows with the specified status and breed data
+ *         description: List of active breeding sows matching the status with breed data in the breeds field
  *       400:
  *         description: Invalid breeding sow status
  */

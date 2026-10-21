@@ -33,7 +33,7 @@ type LockedBreedingSowMatingState = LockedBreedingSowStatus & {
 export const getAllBreedingSows = async () => {
   const sows = await prisma.breedingsows.findMany({
     where: activeBreedingSowWhere,
-    include: { breed: true },
+    include: { breeds: true },
     orderBy: { sow_id: "asc" },
   });
 
@@ -51,7 +51,7 @@ export const getAllBreedingSows = async () => {
 export const getBreedingSowById = async (id: number) => {
   return await prisma.breedingsows.findFirst({
     where: { AND: [{ sow_id: id }, activeBreedingSowWhere] },
-    include: { breed: true },
+    include: { breeds: true },
   });
 };
 
@@ -142,7 +142,7 @@ export const getBreedingSowsByStatus = async (
 ) => {
   return await prisma.breedingsows.findMany({
     where: { AND: [{ status }, activeBreedingSowWhere] },
-    include: { breed: true },
+    include: { breeds: true },
   });
 };
 
