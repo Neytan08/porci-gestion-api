@@ -110,7 +110,7 @@ export const farrowingErrors = {
     ),
 
   /** Only a lactating sow can finish the weaning workflow. */
-  sowNotLactating: (sowId: number, currentStatus: string | null) =>
+  sowNotLactating: (sowId: number, currentStatus: string) =>
     createFarrowingError(
       409,
       FARROWING_ERROR_CODES.SOW_NOT_LACTATING,
@@ -170,7 +170,7 @@ export const farrowingErrors = {
     ),
 
   /** The sow exists but is not in gestation, so a farrowing cannot be created for her. */
-  sowNotGestating: (sowId: number, currentStatus: string | null | undefined) =>
+  sowNotGestating: (sowId: number, currentStatus: string) =>
     createFarrowingError(
       409,
       FARROWING_ERROR_CODES.SOW_NOT_GESTATING,

@@ -45,16 +45,12 @@ export const isAllowedBreedingSowCreationStatus = (
   );
 
 /** Resolves the list priority for active sow statuses. */
-export const getBreedingSowStatusOrder = (status: string | null) => {
-  if (status === null) {
-    return Number.MAX_SAFE_INTEGER;
-  }
-
+export const getBreedingSowStatusOrder = (status: string) => {
   return BREEDING_SOW_STATUS_ORDER[status] ?? Number.MAX_SAFE_INTEGER;
 };
 
 /** Identifies records that have already entered the permanent retirement workflow. */
-export const isRetiredBreedingSow = (sow: { status: string | null; removal_date: Date | null }) =>
+export const isRetiredBreedingSow = (sow: { status: string; removal_date: Date | null }) =>
   sow.status === BREEDING_SOW_STATUSES.retirada || sow.removal_date !== null;
 
 /**

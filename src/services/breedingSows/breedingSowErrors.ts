@@ -231,7 +231,7 @@ export const breedingSowErrors = {
 
   manualStatusChangeBlockedByMatingEvent: (
     sowId: number,
-    currentStatus: string | null,
+    currentStatus: string,
     newStatus: string,
   ) =>
     createBreedingSowError(
@@ -242,11 +242,7 @@ export const breedingSowErrors = {
       { sowId, currentStatus, newStatus },
     ),
 
-  manualStatusChangeBlockedByFarrowing: (
-    sowId: number,
-    currentStatus: string | null,
-    newStatus: string,
-  ) =>
+  manualStatusChangeBlockedByFarrowing: (sowId: number, currentStatus: string, newStatus: string) =>
     createBreedingSowError(
       409,
       BREEDING_SOW_ERROR_CODES.BREEDING_SOW_STATUS_CHANGE_BLOCKED_ACTIVE_FARROWING,

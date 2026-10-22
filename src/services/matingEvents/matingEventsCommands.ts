@@ -275,7 +275,7 @@ export const createMatingEvent = async (data: CreateMatingEventInput) => {
     // instead of falling back to the generic sow-status validation below.
     await ensureSowHasNoBlockingMatingEventOrThrow(tx, data.sow_id);
 
-    if (!sow.status || !isEmptySowStatus(sow.status)) {
+    if (!isEmptySowStatus(sow.status)) {
       throw matingEventErrors.sowNotEmpty(data.sow_id, sow.status);
     }
 
