@@ -190,6 +190,7 @@ router.post(
  * /breedingsows/{id}:
  *   put:
  *     summary: Update an existing breeding sow
+ *     description: Provide at least one editable field. Empty objects and unsupported fields are rejected.
  *     tags: [BreedingSows]
  *     parameters:
  *       - in: path
@@ -204,6 +205,8 @@ router.post(
  *         application/json:
  *           schema:
  *             type: object
+ *             minProperties: 1
+ *             additionalProperties: false
  *             properties:
  *               status:
  *                 type: string

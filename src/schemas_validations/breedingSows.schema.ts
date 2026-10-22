@@ -74,7 +74,10 @@ export const breedingSowUpdateSchema = z
     mammary_glands: databaseIdSchema,
     description: z.string().nullable(),
   })
-  .partial();
+  .partial()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one field must be provided for update",
+  });
 
 // Validation schema for changing the status of a breeding sow
 export const breedingSowStatusChangeValidationSchema = z.strictObject({
