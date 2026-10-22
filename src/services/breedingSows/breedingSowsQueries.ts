@@ -15,12 +15,12 @@ type BreedingSowsQueryClient = Pick<Prisma.TransactionClient, "breedingsows" | "
 
 export const activeBreedingSowWhere = {
   removal_date: null,
-  OR: [{ status: null }, { status: { not: BREEDING_SOW_STATUSES.retirada } }],
+  status: { not: BREEDING_SOW_STATUSES.retirada },
 } satisfies Prisma.breedingsowsWhereInput;
 
 type LockedBreedingSowStatus = {
   sow_id: number;
-  status: string | null;
+  status: string;
   removal_date: Date | null;
 };
 
@@ -76,7 +76,7 @@ export const getActiveBreedingSowWithStatusForUpdate = async (
     FROM breedingsows
     WHERE sow_id = ${sowId}
       AND removal_date IS NULL
-      AND (status IS NULL OR status <> ${BREEDING_SOW_STATUSES.retirada})
+      AND status <> ${BREEDING_SOW_STATUSES.retirada}
     FOR UPDATE
   `);
 
@@ -99,7 +99,7 @@ export const getActiveBreedingSowsWithStatusForUpdate = async (
     FROM breedingsows
     WHERE sow_id IN (${Prisma.join(orderedSowIds)})
       AND removal_date IS NULL
-      AND (status IS NULL OR status <> ${BREEDING_SOW_STATUSES.retirada})
+      AND status <> ${BREEDING_SOW_STATUSES.retirada}
     ORDER BY sow_id
     FOR UPDATE
   `);
@@ -165,14 +165,14 @@ export const getActiveBreedingSowForUpdate = async (
       entry_date: Date;
       last_weaning_date: Date | null;
       removal_date: Date | null;
-      status: string | null;
+      status: string;
     }>
   >(Prisma.sql`
     SELECT sow_id, entry_date, last_weaning_date, removal_date, status
     FROM breedingsows
     WHERE sow_id = ${id}
       AND removal_date IS NULL
-      AND (status IS NULL OR status <> ${BREEDING_SOW_STATUSES.retirada})
+      AND status <> ${BREEDING_SOW_STATUSES.retirada}
     FOR UPDATE
   `);
 
@@ -225,7 +225,7 @@ export const getBreedingSowsForRetirement = async (
     Array<{
       sow_id: number;
       entry_date: Date;
-      status: string | null;
+      status: string;
       removal_date: Date | null;
     }>
   >(Prisma.sql`
@@ -306,8 +306,7 @@ export const applyWeaningToBreedingSow = async (
   return await queryClient.breedingsows.update({
     where: {
       sow_id: sowId,
-      status: BREEDING_SOW_STATUSES.lactancia,
-      ...activeBreedingSowWhere,
+      AND: [{ status: BREEDING_SOW_STATUSES.lactancia }, activeBreedingSowWhere],
     },
     data: {
       status: BREEDING_SOW_STATUSES.vacia,

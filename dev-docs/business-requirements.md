@@ -11,7 +11,7 @@ The requirements describe the expected behavior from a business perspective rath
 ### BR-SOW-001 --- Breeding Sow Registration
 
 **Requirement**\
-A new breeding sow can only be registered with `Vacía` or `No Productiva` status. Statuses such as `Gestación`, `Lactancia`, and `Retirada` are assigned by the corresponding reproductive or retirement processes.
+Every breeding sow must have a non-null status throughout its lifecycle. A new breeding sow can only be registered with `Vacía` or `No Productiva` status. Statuses such as `Gestación`, `Lactancia`, and `Retirada` are assigned by the corresponding reproductive or retirement processes.
 
 **User Story**\
 As a farm user, I want to register a new breeding sow with an appropriate initial status so that its reproductive lifecycle starts from a valid state.

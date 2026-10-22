@@ -145,7 +145,7 @@ export const matingEventErrors = {
       { sowId },
     ),
 
-  sowNotEmpty: (sowId: number, currentStatus: string | null | undefined) =>
+  sowNotEmpty: (sowId: number, currentStatus: string) =>
     createMatingEventError(
       409,
       MATING_EVENT_ERROR_CODES.SOW_NOT_EMPTY,

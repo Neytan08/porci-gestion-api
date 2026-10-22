@@ -13,7 +13,7 @@ type ManualStatusChangeQueryClient = Pick<Prisma.TransactionClient, "matingevent
  */
 export const ensureManualStatusChangeIsAllowed = async (
   sowId: number,
-  currentStatus: string | null,
+  currentStatus: string,
   newStatus: ManuallyAssignableBreedingSowStatus,
   queryClient: ManualStatusChangeQueryClient = prisma,
 ): Promise<void> => {
