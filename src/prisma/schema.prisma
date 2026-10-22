@@ -48,7 +48,7 @@ model matingevents {
   boar_id           Int?
   reproduction_date DateTime     @db.Date
   reproduction_type String?      @db.VarChar(50)
-  pregnancy_result  String?      @db.VarChar(50)
+  pregnancy_result  String       @db.VarChar(50)
   notes             String?
   farrowings        farrowings[]
   boars             boars?       @relation(fields: [boar_id], references: [boar_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_boar")

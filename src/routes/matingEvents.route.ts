@@ -73,7 +73,7 @@ router.get("/:id", asyncHandler(matingEventsController.getById.bind(matingEvents
  *                 example: 1
  *               reproduction_date:
  *                 type: string
- *                 description: Calendar date supplied as M/D/YYYY, YYYY-MM-DD, or an ISO 8601 timestamp with an offset; on or after sow entry and at least 14 days after the last actual weaning
+ *                 description: Calendar date supplied as M/D/YYYY, YYYY-MM-DD, or an ISO 8601 timestamp with an offset; on or after sow entry and at least 5 days after the last actual weaning
  *                 example: "2025-10-05"
  *               reproduction_type:
  *                 type: string
