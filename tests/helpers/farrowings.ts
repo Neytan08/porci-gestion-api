@@ -3,6 +3,16 @@ import { BREEDING_SOW_STATUSES } from "../../src/services/breedingSows/breedingS
 import { PREGNANCY_RESULTS } from "../../src/services/matingEvents/pregnancyRules";
 import { createMatingEvent } from "./matingEvents";
 
+/** Builds a valid farrowing request while keeping scenario-specific fields explicit in tests. */
+export function farrowingPayload(sowId: number) {
+  return {
+    sow_id: sowId,
+    farrowing_date: "2024-05-01",
+    male_piglets: 5,
+    female_piglets: 4,
+  };
+}
+
 /** Prepares a lactating sow, closed pregnancy, and open farrowing as one consistent history fixture. */
 export async function createFarrowing(boarId: number) {
   const event = await createMatingEvent({ boarId, pregnancyResult: PREGNANCY_RESULTS.positivo });
