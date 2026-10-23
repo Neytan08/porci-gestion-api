@@ -10,6 +10,19 @@ const base = "/api/breeds";
 
 describe("breed payload validation", () => {
   it.each([
+    { label: "empty", payload: {} },
+    { label: "unsupported-only", payload: { unsupported: true, boars: { deleteMany: {} } } },
+  ])("rejects $label updates without changing the breed", async ({ payload }) => {
+    const before = await createBreed({ description: "Unchanged" });
+    expectApiError(
+      await api.put(`${base}/${before.breed_id}`).send(payload),
+      400,
+      codes.BREED_UPDATE_BODY_INVALID,
+    );
+    expect(await prisma.breeds.findMany()).toEqual([before]);
+  });
+
+  it.each([
     { label: "missing name", payload: {} },
     { label: "empty name", payload: { breed_name: "" } },
     { label: "whitespace-only name", payload: { breed_name: " \t\n " } },

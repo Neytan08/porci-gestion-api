@@ -3,6 +3,7 @@ import prisma from "../../../src/prismaClient";
 import { BREEDING_SOW_ERROR_CODES as codes } from "../../../src/services/breedingSows/breedingSowErrors";
 import { BREEDING_SOW_STATUSES as statuses } from "../../../src/services/breedingSows/breedingSowsRules";
 import { PREGNANCY_RESULTS as results } from "../../../src/services/matingEvents/pregnancyRules";
+import { MATING_EVENT_ERROR_CODES as matingCodes } from "../../../src/services/matingEvents/matingEventErrors";
 import { api, expectApiError } from "../../helpers/api";
 import { createBoar } from "../../helpers/boars";
 import { createBreedingSow } from "../../helpers/breedingSows";
@@ -117,6 +118,34 @@ describe("manual breeding sow status changes", () => {
 });
 
 describe("breeding sow history preservation", () => {
+  it("keeps entry on or before the earliest mating date without partially updating the profile", async () => {
+    // The oldest date is inserted last and is inactive, so neither ID nor active-result filtering is sufficient.
+    const later = await createMatingEvent();
+    const earliest = await prisma.matingevents.create({
+      data: {
+        sow_id: later.sow_id,
+        boar_id: later.boar_id,
+        reproduction_type: later.reproduction_type,
+        reproduction_date: new Date("2023-06-01"),
+        pregnancy_result: results.negativo,
+      },
+    });
+    const before = await prisma.breedingsows.findUniqueOrThrow({ where: { sow_id: later.sow_id } });
+    expectApiError(
+      await api.put(`${base}/${before.sow_id}`).send({
+        entry_date: "2023-06-02", description: "Must not persist",
+      }),
+      400,
+      matingCodes.REPRODUCTION_DATE_BEFORE_SOW_ENTRY,
+    );
+    expect(await prisma.breedingsows.findMany()).toEqual([before]);
+    expect(await prisma.matingevents.findMany({ orderBy: { mating_id: "asc" } })).toEqual([later, earliest]);
+
+    const allowed = await api.put(`${base}/${before.sow_id}`).send({ entry_date: "2023-06-01" });
+    expect(allowed.status).toBe(200);
+    expect(await prisma.breedingsows.findMany()).toEqual([{ ...before, entry_date: earliest.reproduction_date }]);
+  });
+
   it("deletes only a sow with no reproductive history and preserves its breed", async () => {
     const target = await createBreedingSow();
     const survivor = await createBreedingSow();
