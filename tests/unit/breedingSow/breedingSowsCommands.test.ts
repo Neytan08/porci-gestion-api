@@ -18,6 +18,7 @@ import {
 import {
   cancelActiveMatingEventsBySowIds,
   countMatingEventsBySowId,
+  getEarliestMatingEventBySowId,
 } from "../../../src/services/matingEvents/matingEventsQueries";
 
 vi.mock("../../../src/prismaClient", () => ({ default: { $transaction: vi.fn() } }));
@@ -41,6 +42,7 @@ vi.mock("../../../src/services/breedingSows/breedingSowsStatusValidation", () =>
 vi.mock("../../../src/services/matingEvents/matingEventsQueries", () => ({
   cancelActiveMatingEventsBySowIds: vi.fn(),
   countMatingEventsBySowId: vi.fn(),
+  getEarliestMatingEventBySowId: vi.fn(),
 }));
 vi.mock("../../../src/services/farrowings/farrowingsQueries", () => ({
   closeFarrowingsForRetirement: vi.fn(),
@@ -95,6 +97,7 @@ beforeEach(() => {
   vi.mocked(queries.updateActiveBreedingSowById).mockResolvedValue(record);
   vi.mocked(queries.deleteActiveBreedingSowById).mockResolvedValue(record);
   vi.mocked(countMatingEventsBySowId).mockResolvedValue(0);
+  vi.mocked(getEarliestMatingEventBySowId).mockResolvedValue(null);
   vi.mocked(cancelActiveMatingEventsBySowIds).mockResolvedValue({ count: 0 });
   vi.mocked(getActiveFarrowingsBySowIds).mockResolvedValue([]);
   vi.mocked(closeFarrowingsForRetirement).mockResolvedValue({ count: 0 });

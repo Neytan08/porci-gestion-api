@@ -190,7 +190,7 @@ router.post(
  * /breedingsows/{id}:
  *   put:
  *     summary: Update an existing breeding sow
- *     description: Provide at least one editable field. Empty objects and unsupported fields are rejected.
+ *     description: Provide at least one editable field. Empty objects and unsupported fields are rejected. Entry-date changes must remain on or before every recorded reproduction date, including inactive mating history.
  *     tags: [BreedingSows]
  *     parameters:
  *       - in: path
@@ -250,7 +250,7 @@ router.post(
  *       200:
  *         description: Breeding sow updated successfully
  *       400:
- *         description: Invalid ID or request payload
+ *         description: Invalid ID or request payload, or entry date after recorded reproduction or weaning history
  *       404:
  *         description: Active breeding sow or selected breed not found
  *       409:

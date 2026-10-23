@@ -85,7 +85,7 @@ router.post("/", asyncHandler(BreedController.create.bind(BreedController)));
  * /breeds/{id}:
  *   put:
  *     summary: Partially update a breed by ID
- *     description: Changes only supplied editable fields.
+ *     description: Changes only supplied editable fields. At least one writable field is required; empty objects and unsupported-only payloads are rejected.
  *     tags: [Breed]
  *     parameters:
  *       - in: path
@@ -97,10 +97,14 @@ router.post("/", asyncHandler(BreedController.create.bind(BreedController)));
  *         description: ID of the breed to update
  *     requestBody:
  *       required: true
+ *       description: Supply breed_name or description. Unknown fields are ignored and do not count as writable fields.
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             anyOf:
+ *               - required: [breed_name]
+ *               - required: [description]
  *             properties:
  *               breed_name:
  *                 type: string
@@ -115,7 +119,7 @@ router.post("/", asyncHandler(BreedController.create.bind(BreedController)));
  *       200:
  *         description: Breed updated successfully
  *       400:
- *         description: Invalid request
+ *         description: Invalid request, empty update, or no writable fields supplied
  *       404:
  *         description: Breed not found
  *       409:

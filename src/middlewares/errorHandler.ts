@@ -107,7 +107,6 @@ export function errorHandler(err: unknown, _req: Request, res: Response, next: N
     logHandledError(status, "Invalid JSON body", {
       errorCode,
       errorType: err.name,
-      rawMessage: err.message,
     });
 
     return res.status(status).json({

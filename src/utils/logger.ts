@@ -6,9 +6,19 @@ const { combine, timestamp, printf, colorize, errors, json } = format;
 
 const RESERVED_LOG_KEYS = new Set(["level", "message", "timestamp", "stack"]);
 
+/** Keeps metadata on one readable line without allowing terminal controls or forged entries. */
+const escapeMetadataControls = (value: string) =>
+  value.replace(/[\p{Cc}\u2028\u2029]/gu, (character) => {
+    if (character === "\n") return "\\n";
+    if (character === "\r") return "\\r";
+    if (character === "\t") return "\\t";
+    return `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`;
+  });
+
+/** Serializes metadata for pretty output while leaving structured record values unchanged. */
 const formatMetadataValue = (value: unknown) => {
   if (typeof value === "string") {
-    return value;
+    return escapeMetadataControls(value);
   }
 
   if (
@@ -21,9 +31,9 @@ const formatMetadataValue = (value: unknown) => {
   }
 
   try {
-    return JSON.stringify(value);
+    return escapeMetadataControls(JSON.stringify(value));
   } catch {
-    return String(value);
+    return escapeMetadataControls(String(value));
   }
 };
 

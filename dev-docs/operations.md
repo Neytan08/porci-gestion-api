@@ -8,7 +8,7 @@ Production starts with `npm run build` followed by `npm start`. The build produc
 
 ## Shutdown
 
-`SIGINT` and `SIGTERM` stop new HTTP connections, allow active work to drain for `SHUTDOWN_TIMEOUT_MS`, and disconnect Prisma. The process force-closes remaining connections after the timeout so deployments cannot wait indefinitely.
+`SIGINT` and `SIGTERM` stop new HTTP connections and drain active work before disconnecting Prisma. `SHUTDOWN_TIMEOUT_MS` bounds both HTTP draining and Prisma disconnection. At the deadline, the process force-closes remaining HTTP connections and exits with code 1, including when database cleanup is still pending.
 
 ## Configuration
 
@@ -21,3 +21,5 @@ Development defaults to readable console output. Production defaults to JSON con
 `LOG_FILE_MAX_BYTES` limits each file and `LOG_FILE_MAX_FILES` limits retained rotated files. Monitor the server disk even with rotation enabled. Set `LOG_FILES_ENABLED=false` when a hosting platform collects console logs instead.
 
 Every request returns `X-Request-ID`. Use that value to correlate a frontend failure with the server's request and error records; server logs are not sent to the frontend.
+
+Malformed-JSON diagnostics omit parser messages because they can contain submitted body fragments. Pretty console output escapes control characters in metadata; structured JSON records retain their original values.

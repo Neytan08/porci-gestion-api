@@ -108,7 +108,7 @@ As a farm user, I want mating events to be registered only for eligible sows so 
 ### BR-MATING-002 --- Reproduction Date
 
 **Requirement**\
-The reproduction date cannot be earlier than the sow's entry date.
+The reproduction date cannot be earlier than the sow's entry date. Corrections to the sow's entry date must preserve this order for all existing mating events, including inactive history; equality is allowed.
 
 After a sow completes weaning, at least 5 days must pass before a new mating event can be registered. Once this minimum period has passed, a new mating event can be registered whenever the sow is ready for reproduction.
 

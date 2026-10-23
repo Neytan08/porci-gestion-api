@@ -20,6 +20,18 @@ type LockedFarrowingMatingEvent = PregnancyUpdateEvent & {
   reproduction_date: Date;
 };
 
+/** Finds the earliest reproductive date while the caller holds the sow's lifecycle lock. */
+export const getEarliestMatingEventBySowId = async (
+  sowId: number,
+  queryClient: MatingEventsQueryClient,
+) => {
+  return await queryClient.matingevents.findFirst({
+    where: { sow_id: sowId },
+    select: { reproduction_date: true },
+    orderBy: { reproduction_date: "asc" },
+  });
+};
+
 /**
  * Returns the full mating-event collection without applying business rules.
  */

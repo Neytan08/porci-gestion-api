@@ -12,5 +12,7 @@ export const breedSchema = z.object({
   description: z.string().optional(),
 });
 
-// Partial schema allows optional fields for updates
-export const breedUpdateSchema = breedSchema.partial();
+// Omitted fields remain unchanged, but stripping unsupported input must not leave an empty update.
+export const breedUpdateSchema = breedSchema.partial().refine((data) => Object.keys(data).length > 0, {
+  message: "At least one field must be provided for update",
+});

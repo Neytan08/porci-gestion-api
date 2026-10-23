@@ -11,10 +11,13 @@ import {
   getActiveFarrowingsBySowIds,
 } from "../farrowings/farrowingsQueries";
 import { isFarrowingCompletionDateValid } from "../farrowings/farrowingsRules";
+import { matingEventErrors } from "../matingEvents/matingEventErrors";
 import {
   cancelActiveMatingEventsBySowIds,
   countMatingEventsBySowId,
+  getEarliestMatingEventBySowId,
 } from "../matingEvents/matingEventsQueries";
+import { isReproductionDateOnOrAfterEntryDate } from "../matingEvents/pregnancyRules";
 import { breedingSowErrors } from "./breedingSowErrors";
 import {
   deleteActiveBreedingSowById,
@@ -75,6 +78,25 @@ const ensureBreedingSowDatesAreConsistent = (
   }
 };
 
+/** Prevents an entry-date correction from invalidating any recorded mating, including inactive history. */
+const ensureEntryDatePreservesMatingHistory = async (
+  tx: Prisma.TransactionClient,
+  sowId: number,
+  entryDate: Date,
+) => {
+  const earliestMating = await getEarliestMatingEventBySowId(sowId, tx);
+  if (
+    earliestMating &&
+    !isReproductionDateOnOrAfterEntryDate(earliestMating.reproduction_date, entryDate)
+  ) {
+    throw matingEventErrors.reproductionDateBeforeSowEntry(
+      sowId,
+      earliestMating.reproduction_date,
+      entryDate,
+    );
+  }
+};
+
 /** Creates a breeding sow after checking references, duplicate tags, and dates. */
 export const createBreedingSow = async (data: CreateBreedingSowInput) => {
   try {
@@ -111,13 +133,16 @@ export const updateBreedingSow = async (id: number, data: UpdateBreedingSowInput
         await ensureSowTagNumberIsAvailable(tx, data.sow_tag_number, id);
       }
 
-      // TODO: Consider if we should validate this on update, if so look for a elegant way to do it JUST A HEADS UP FOR NOW
       const nextEntryDate = data.entry_date ?? currentSow.entry_date;
       ensureBreedingSowDatesAreConsistent(
         nextEntryDate,
         currentSow.last_weaning_date,
         currentSow.removal_date,
       );
+
+      if (data.entry_date !== undefined) {
+        await ensureEntryDatePreservesMatingHistory(tx, id, nextEntryDate);
+      }
 
       if (data.status !== undefined && data.status !== currentSow.status) {
         await ensureManualStatusChangeIsAllowed(id, currentSow.status, data.status, tx);

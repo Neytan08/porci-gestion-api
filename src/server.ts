@@ -57,23 +57,22 @@ const startServer = async () => {
         timeoutMs: config.shutdownTimeoutMs,
       });
       server.closeAllConnections?.();
-      process.exitCode = 1;
+      process.exit(1);
     }, config.shutdownTimeoutMs);
     forceCloseTimer.unref();
 
     try {
-      await closeHttpServer(server);
-      clearTimeout(forceCloseTimer);
-      await prisma.$disconnect();
+      // Keep one deadline around HTTP draining and cleanup, including a stalled disconnect.
+      await closeHttpServer(server).finally(() => prisma.$disconnect());
       logger.info("API server shutdown completed", { event: "server.shutdown_completed" });
     } catch (error) {
-      clearTimeout(forceCloseTimer);
       logger.error("API server shutdown failed", {
         event: "server.shutdown_failed",
         ...getErrorLogContext(error),
       });
-      await prisma.$disconnect();
       process.exitCode = 1;
+    } finally {
+      clearTimeout(forceCloseTimer);
     }
   };
 
